@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timeless 2026 — Concert Ops Tracker</title>
+<style>
+  :root{
+    --navy:#1B1F3B; --navy2:#252B4D; --gold:#C9A227; --goldlt:#E6C866;
+    --ivory:#F7F5F0; --card:#FFFFFF; --border:#E5E3DC; --text:#1B1F3B; --muted:#6B6F8A;
+    --red:#D64545; --amber:#C9862A; --green:#2E8B57;
+    --st-notstarted-bg:#EFEFEF; --st-notstarted-fg:#6B6F8A;
+    --st-inprogress-bg:#FDECC8; --st-inprogress-fg:#92600E;
+    --st-underreview-bg:#DCE6F7; --st-underreview-fg:#1E3F8A;
+    --st-completed-bg:#DCF3E4; --st-completed-fg:#1D6B41;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--ivory);color:var(--text);}
+  header.top{background:var(--navy);color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  header.top h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px;}
+  header.top .sub{font-size:12px;color:var(--goldlt);margin-top:2px;}
+  .top-actions{display:flex;align-items:center;gap:10px;}
+  .btn{border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;}
+  .btn:hover{opacity:.85;}
+  .btn-gold{background:var(--gold);color:var(--navy);}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#fff;}
+  .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-danger{background:#FBE4E4;color:var(--red);}
+  .sync-note{font-size:11px;color:#C7CAE0;}
+
+  nav.tabs{display:flex;gap:4px;padding:14px 28px 0;background:var(--ivory);border-bottom:1px solid var(--border);}
+  nav.tabs button{background:none;border:none;padding:10px 18px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;}
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--gold);}
+
+  main{padding:20px 28px 60px;max-width:1400px;margin:0 auto;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .kpi-card .num{font-size:24px;font-weight:800;color:var(--navy);}
+  .kpi-card .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+  .kpi-card.overdue .num{color:var(--red);}
+  .kpi-card.soon .num{color:var(--amber);}
+  .kpi-card.done .num{color:var(--green);}
+
+  .dept-section{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden;}
+  .dept-head{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;}
+  .dept-head .dept-name{font-weight:700;font-size:14px;}
+  .dept-head .dept-count{font-size:11px;color:var(--muted);font-weight:500;}
+  .dept-progress-wrap{flex:1;max-width:220px;display:flex;align-items:center;gap:8px;}
+  .dept-progress-bar{flex:1;height:7px;background:#EDEBE3;border-radius:6px;overflow:hidden;}
+  .dept-progress-fill{height:100%;background:var(--green);}
+  .dept-progress-pct{font-size:11px;font-weight:700;color:var(--muted);width:34px;text-align:right;}
+  .dept-caret{transition:transform .15s;color:var(--muted);font-size:12px;}
+  .dept-section.collapsed .dept-caret{transform:rotate(-90deg);}
+  .dept-body{border-top:1px solid var(--border);}
+  .dept-section.collapsed .dept-body{display:none;}
+
+  table.task-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.task-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border);background:#FBFAF6;}
+  table.task-table td{padding:9px 12px;border-bottom:1px solid #F0EEE7;vertical-align:middle;}
+  table.task-table tr:last-child td{border-bottom:none;}
+  table.task-table tr.overdue td.task-cell{border-left:3px solid var(--red);}
+  table.task-table tr.soon td.task-cell{border-left:3px solid var(--amber);}
+  .task-cell{padding-left:12px;}
+  .task-name{font-weight:600;}
+  .task-tag{font-size:10.5px;color:var(--muted);}
+  .date-range{font-size:12px;white-space:nowrap;}
+  .date-flag{font-size:10.5px;font-weight:700;margin-left:6px;}
+  .date-flag.overdue{color:var(--red);}
+  .date-flag.soon{color:var(--amber);}
+  .pic-cell{font-size:12.5px;}
+
+  select.status-pill{border:none;border-radius:14px;padding:5px 10px 5px 8px;font-size:12px;font-weight:700;cursor:pointer;appearance:none;-webkit-appearance:none;background-repeat:no-repeat;background-position:right 6px center;padding-right:22px;}
+  .st-Not_Started{background-color:var(--st-notstarted-bg);color:var(--st-notstarted-fg);}
+  .st-In_Progress{background-color:var(--st-inprogress-bg);color:var(--st-inprogress-fg);}
+  .st-Under_Review{background-color:var(--st-underreview-bg);color:var(--st-underreview-fg);}
+  .st-Completed{background-color:var(--st-completed-bg);color:var(--st-completed-fg);}
+
+  .row-actions{display:flex;gap:6px;}
+  .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;color:var(--muted);}
+  .icon-btn:hover{background:#F0EEE7;color:var(--text);}
+
+  /* Timeline */
+  .timeline-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .legend-chip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);}
+  .legend-swatch{width:11px;height:11px;border-radius:3px;}
+  .timeline-outer{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--card);}
+  .tl-header-row{display:flex;position:sticky;top:0;background:var(--card);z-index:3;border-bottom:1px solid var(--border);}
+  .tl-label-spacer{position:sticky;left:0;width:280px;flex-shrink:0;background:var(--navy);z-index:4;}
+  .tl-month-track{position:relative;height:24px;}
+  .tl-month-lbl{position:absolute;top:0;height:24px;display:flex;align-items:center;font-size:11px;font-weight:700;color:#fff;background:var(--navy);padding-left:6px;border-left:1px solid rgba(255,255,255,.25);}
+  .tl-day-track{position:relative;height:20px;border-top:1px solid rgba(255,255,255,.15);}
+  .tl-day-lbl{position:absolute;top:0;height:20px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#C7CAE0;width:16px;}
+  .tl-row{display:flex;align-items:center;height:30px;border-bottom:1px solid #F0EEE7;}
+  .tl-label{position:sticky;left:0;width:280px;flex-shrink:0;background:var(--card);z-index:2;padding:0 10px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--border);}
+  .tl-bars{position:relative;height:30px;}
+  .tl-bar{position:absolute;top:6px;height:18px;border-radius:5px;font-size:9.5px;color:var(--navy);display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;font-weight:700;box-shadow:0 0 0 1px rgba(0,0,0,.05);}
+  .tl-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:2;}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(27,31,59,.45);display:flex;align-items:center;justify-content:center;z-index:50;}
+  .overlay[hidden]{display:none;}
+  .modal{background:#fff;border-radius:12px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px 24px;}
+  .modal h2{margin:0 0 16px;font-size:17px;color:var(--navy);}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;}
+  .modal-actions .right{display:flex;gap:8px;}
+
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:100;opacity:0;transform:translateY(8px);transition:all .2s;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.error{background:var(--red);}
+
+  .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+  .loading{padding:60px;text-align:center;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Timeless: A Tribute to Classics! — Concert Ops Tracker</h1>
+    <div class="sub">Taylor's Symphony Orchestra Annual Concert 2026 &nbsp;•&nbsp; Main Concert 24/10</div>
+  </div>
+  <div class="top-actions">
+    <span class="sync-note" id="syncNote">Loading…</span>
+    <button class="btn btn-ghost" id="refreshBtn">↻ Refresh</button>
+    <button class="btn btn-gold" id="addTaskBtn">+ Add Task</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="tasks">Tasks</button>
+  <button data-tab="timeline">Master Timeline</button>
+</nav>
+
+<main>
+  <div id="tasksView">
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="num" id="kpiTotal">–</div><div class="lbl">Total Tasks</div></div>
+      <div class="kpi-card done"><div class="num" id="kpiDone">–</div><div class="lbl">Completed</div></div>
+      <div class="kpi-card soon"><div class="num" id="kpiSoon">–</div><div class="lbl">Due within 7 days</div></div>
+      <div class="kpi-card overdue"><div class="num" id="kpiOverdue">–</div><div class="lbl">Overdue</div></div>
+    </div>
+    <div id="deptSections"><div class="loading">Loading tasks…</div></div>
+  </div>
+
+  <div id="timelineView" style="display:none;">
+    <div class="timeline-legend" id="timelineLegend"></div>
+    <div class="timeline-outer" id="timelineOuter"><div class="loading">Loading timeline…</div></div>
+  </div>
+</main>
+
+<div class="overlay" id="modalOverlay" hidden>
+  <div class="modal">
+    <h2 id="modalTitle">Add Task</h2>
+    <form id="taskForm">
+      <div class="field-row">
+        <div class="field">
+          <label>Department</label>
+          <select id="f_dept" required></select>
+        </div>
+        <div class="field">
+          <label>Tag Type</label>
+          <select id="f_tag" required>
+            <option>Deadline</option><option>Set Up On</option><option>Send Out</option>
+            <option>Close On</option><option>Execution Date</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Task</label>
+        <input type="text" id="f_task" required placeholder="e.g. Book Bandcamp ADP classroom">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>PIC</label>
+          <input type="text" id="f_pic" required placeholder="e.g. Bernard, Zhan Hong">
+        </div>
+        <div class="field">
+          <label>Overseer</label>
+          <input type="text" id="f_overseer" placeholder="Joshua / Victor">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="f_start" required>
+        </div>
+        <div class="field">
+          <label>End Date</label>
+          <input type="date" id="f_end" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Status</label>
+          <select id="f_status">
+            <option>Not Started</option><option>In Progress</option><option>Under Review</option><option>Completed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Reminder Date (optional)</label>
+          <input type="date" id="f_reminder">
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="f_notes" rows="2" placeholder="Optional notes or link"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;">Delete Task</button>
+        <div class="right">
+          <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-gold">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- CONFIG ----------------
+  const API_URL = "https://script.google.com/macros/s/AKfycbwk4dqSNMA870qYGLSlKYJk05hHSenjH0bRR_KXtc0M11qgVYB4haVP91m_6vzouEu1xw/exec";
+  const REFRESH_MS = 25000;
+
+  const DEPTS = [
+    { name: "EXCO", color: "#D9D2E9" },
+    { name: "Score Arrangers", color: "#FCE5CD" },
+    { name: "Logistics", color: "#D0E0E3" },
+    { name: "Design", color: "#F4CCCC" },
+    { name: "Sponsorship", color: "#FFE599" },
+    { name: "Ticketing", color: "#C9DAF8" },
+    { name: "Marketing", color: "#D9EAD3" },
+    { name: "Welfare / F&B", color: "#EAD1DC" },
+    { name: "PD", color: "#CFE2F3" },
+    { name: "CP", color: "#F9CB9C" },
+    { name: "FM & SM", color: "#B6D7A8" },
+    { name: "PA / Technical", color: "#A2C4C9" },
+    { name: "Key Events", color: "#FFD966" },
+  ];
+  const deptColor = (name) => (DEPTS.find(d => d.name === name) || {}).color || "#E5E3DC";
+
+  // ---------------- STATE ----------------
+  let tasks = [];
+  let collapsedDepts = new Set();
+  let editingId = null;
+  let refreshTimer = null;
+
+  // ---------------- HELPERS ----------------
+  function toast(msg, isError){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isError ? " error" : "");
+    setTimeout(() => t.className = "toast", 2500);
+  }
+
+  function todayStr(){
+    const d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  function parseDateOnly(s){
+    if (!s) return null;
+    // handles both "yyyy-MM-dd" and ISO datetime strings from Apps Script
+    return new Date(String(s).slice(0,10) + "T00:00:00");
+  }
+
+  function daysBetween(a, b){
+    return Math.round((b - a) / 86400000);
+  }
+
+  function fmtDate(s){
+    const d = parseDateOnly(s);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit" });
+  }
+
+  function statusClass(s){
+    return "st-" + String(s || "Not Started").replace(/ /g, "_");
+  }
+
+  // ---------------- API ----------------
+  async function apiGet(){
+    const res = await fetch(API_URL + "?action=list");
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Failed to load tasks");
+    return json.tasks;
+  }
+
+  async function apiPost(body){
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight on Apps Script
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Request failed");
+    return json;
+  }
+
+  async function loadTasks(showLoading){
+    try {
+      if (showLoading) document.getElementById("deptSections").innerHTML = '<div class="loading">Loading tasks…</div>';
+      tasks = await apiGet();
+      document.getElementById("syncNote").textContent = "Synced " + new Date().toLocaleTimeString();
+      renderAll();
+    } catch (err) {
+      document.getElementById("syncNote").textContent = "Sync failed";
+      toast("Couldn't load tasks: " + err.message, true);
+    }
+  }
+
+  function scheduleRefresh(){
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => loadTasks(false), REFRESH_MS);
+  }
+
+  // ---------------- RENDER: TASKS TAB ----------------
+  function renderKPIs(){
+    const today = parseDateOnly(todayStr());
+    const total = tasks.length;
+    const done = tasks.filter(t => t.Status === "Completed").length;
+    const overdue = tasks.filter(t => t.Status !== "Completed" && parseDateOnly(t["End Date"]) < today).length;
+    const soon = tasks.filter(t => {
+      if (t.Status === "Completed") return false;
+      const end = parseDateOnly(t["End Date"]);
+      if (!end) return false;
+      const diff = daysBetween(today, end);
+      return diff >= 0 && diff <= 7;
+    }).length;
+    document.getElementById("kpiTotal").textContent = total;
+    document.getElementById("kpiDone").textContent = done;
+    document.getElementById("kpiSoon").textContent = soon;
+    document.getElementById("kpiOverdue").textContent = overdue;
+  }
+
+  function renderDeptSections(){
+    const container = document.getElementById("deptSections");
+    if (tasks.length === 0) {
+      container.innerHTML = '<div class="empty-state">No tasks yet. Click "+ Add Task" to create the first one.</div>';
+      return;
+    }
+    const today = parseDateOnly(todayStr());
+    const grouped = {};
+    tasks.forEach(t => {
+      const dept = t.Department || "Uncategorized";
+      (grouped[dept] = grouped[dept] || []).push(t);
+    });
+    const order = DEPTS.map(d => d.name).concat(Object.keys(grouped).filter(d => !DEPTS.some(x => x.name === d)));
+
+    let html = "";
+    order.forEach(dept => {
+      const list = grouped[dept];
+      if (!list) return;
+      list.sort((a,b) => (a.PIC||"").localeCompare(b.PIC||"") || String(a["Start Date"]||"").localeCompare(String(b["Start Date"]||"")));
+      const doneCount = list.filter(t => t.Status === "Completed").length;
+      const pct = Math.round((doneCount / list.length) * 100);
+      const collapsed = collapsedDepts.has(dept) ? " collapsed" : "";
+      const color = deptColor(dept);
+
+      html += `<div class="dept-section${collapsed}" data-dept="${escapeAttr(dept)}">
+        <div class="dept-head" style="background:${color}22;" onclick="TRACKER.toggleDept('${escapeAttr(dept)}')">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="dept-caret">▾</span>
+            <span class="dept-name">${escapeHtml(dept)}</span>
+            <span class="dept-count">${list.length} task${list.length===1?"":"s"}</span>
+          </div>
+          <div class="dept-progress-wrap">
+            <div class="dept-progress-bar"><div class="dept-progress-fill" style="width:${pct}%;"></div></div>
+            <div class="dept-progress-pct">${pct}%</div>
+          </div>
+        </div>
+        <div class="dept-body">
+          <table class="task-table">
+            <thead><tr>
+              <th style="width:32%;">Task</th><th>PIC</th><th>Dates</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>`;
+
+      list.forEach(t => {
+        const end = parseDateOnly(t["End Date"]);
+        const overdue = t.Status !== "Completed" && end && end < today;
+        const diff = end ? daysBetween(today, end) : null;
+        const soon = t.Status !== "Completed" && diff !== null && diff >= 0 && diff <= 3;
+        const rowClass = overdue ? "overdue" : (soon ? "soon" : "");
+        let flag = "";
+        if (overdue) flag = `<span class="date-flag overdue">OVERDUE</span>`;
+        else if (soon) flag = `<span class="date-flag soon">DUE SOON</span>`;
+
+        html += `<tr class="${rowClass}">
+          <td class="task-cell">
+            <div class="task-name">${escapeHtml(t.Task || "")}</div>
+            <div class="task-tag">${escapeHtml(t["Tag Type"] || "")}</div>
+          </td>
+          <td class="pic-cell">${escapeHtml(t.PIC || "")}</td>
+          <td class="date-range">${fmtDate(t["Start Date"])} – ${fmtDate(t["End Date"])}${flag}</td>
+          <td>
+            <select class="status-pill ${statusClass(t.Status)}" onchange="TRACKER.quickStatus('${escapeAttr(t.ID)}', this.value, this)">
+              ${["Not Started","In Progress","Under Review","Completed"].map(s =>
+                `<option value="${s}" ${t.Status===s?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit" onclick="TRACKER.openEdit('${escapeAttr(t.ID)}')">✎</button>
+            </div>
+          </td>
+        </tr>`;
+      });
+
+      html += `</tbody></table></div></div>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderAll(){
+    renderKPIs();
+    renderDeptSections();
+    renderTimeline();
+  }
+
+  // ---------------- RENDER: TIMELINE TAB ----------------
+  function renderTimeline(){
+    const outer = document.getElementById("timelineOuter");
+    const legend = document.getElementById("timelineLegend");
+    legend.innerHTML = DEPTS.map(d =>
+      `<span class="legend-chip"><span class="legend-swatch" style="background:${d.color};"></span>${escapeHtml(d.name)}</span>`
+    ).join("");
+
+    if (tasks.length === 0) {
+      outer.innerHTML = '<div class="empty-state">No tasks yet.</div>';
+      return;
+    }
+
+    const dayWidth = 16;
+    let minDate = null, maxDate = null;
+    tasks.forEach(t => {
+      const s = parseDateOnly(t["Start Date"]);
+      const e = parseDateOnly(t["End Date"]);
+      if (s && (!minDate || s < minDate)) minDate = s;
+      if (e && (!maxDate || e > maxDate)) maxDate = e;
+    });
+    if (!minDate || !maxDate) { outer.innerHTML = '<div class="empty-state">No dated tasks yet.</div>'; return; }
+    const totalDays = daysBetween(minDate, maxDate) + 1;
+    const totalWidth = totalDays * dayWidth;
+
+    // month header segments
+    let monthSegs = [];
+    let cursor = new Date(minDate);
+    while (cursor <= maxDate) {
+      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const segStart = monthStart < minDate ? minDate : monthStart;
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      const segEnd = monthEnd > maxDate ? maxDate : monthEnd;
+      monthSegs.push({
+        label: cursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
+        left: daysBetween(minDate, segStart) * dayWidth,
+        width: (daysBetween(segStart, segEnd) + 1) * dayWidth,
+      });
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+
+    let dayTicks = "";
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(minDate); d.setDate(d.getDate() + i);
+      if (d.getDate() === 1 || d.getDate() % 5 === 0) {
+        dayTicks += `<div class="tl-day-lbl" style="left:${i*dayWidth}px;">${d.getDate()}</div>`;
+      }
+    }
+
+    const todayOffset = daysBetween(minDate, parseDateOnly(todayStr()));
+    const todayLine = (todayOffset >= 0 && todayOffset <= totalDays)
+      ? `<div class="tl-today-line" style="left:${todayOffset*dayWidth}px;"></div>` : "";
+
+    let rows = "";
+    const grouped = {};
+    tasks.forEach(t => { (grouped[t.Department || "Uncategorized"] = grouped[t.Department || "Uncategorized"] || []).push(t); });
+    const order = DEPTS.map(d => d.name).concat(Object.keys(grouped).filter(d => !DEPTS.some(x => x.name === d)));
+
+    order.forEach(dept => {
+      const list = grouped[dept];
+      if (!list) return;
+      const color = deptColor(dept);
+      list.forEach(t => {
+        const s = parseDateOnly(t["Start Date"]);
+        const e = parseDateOnly(t["End Date"]);
+        if (!s || !e) return;
+        const left = daysBetween(minDate, s) * dayWidth;
+        const width = Math.max((daysBetween(s, e) + 1) * dayWidth, 6);
+        rows += `<div class="tl-row">
+          <div class="tl-label" title="${escapeAttr(dept + ' — ' + t.Task)}">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px;"></span>
+            ${escapeHtml(t.Task)}
+          </div>
+          <div class="tl-bars" style="width:${totalWidth}px;">
+            <div class="tl-bar" style="left:${left}px;width:${width}px;background:${color};" title="${escapeAttr(t.Task + ': ' + fmtDate(t['Start Date']) + ' - ' + fmtDate(t['End Date']))}">${width > 40 ? escapeHtml(t.Task) : ""}</div>
+          </div>
+        </div>`;
+      });
+    });
+
+    outer.innerHTML = `
+      <div class="tl-header-row">
+        <div class="tl-label-spacer"></div>
+        <div style="width:${totalWidth}px;">
+          <div class="tl-month-track">${monthSegs.map(m => `<div class="tl-month-lbl" style="left:${m.left}px;width:${m.width}px;">${m.label}</div>`).join("")}</div>
+          <div class="tl-day-track" style="width:${totalWidth}px;">${dayTicks}${todayLine}</div>
+        </div>
+      </div>
+      <div style="position:relative;">${rows}</div>
+    `;
+  }
+
+  // ---------------- ACTIONS ----------------
+  window.TRACKER = {
+    toggleDept(dept){
+      if (collapsedDepts.has(dept)) collapsedDepts.delete(dept); else collapsedDepts.add(dept);
+      renderDeptSections();
+    },
+    async quickStatus(id, newStatus, selectEl){
+      selectEl.className = "status-pill " + statusClass(newStatus);
+      try {
+        await apiPost({ action: "update", id, task: { Status: newStatus } });
+        const t = tasks.find(x => x.ID === id);
+        if (t) t.Status = newStatus;
+        renderKPIs();
+        renderDeptSections();
+        toast("Status updated");
+      } catch (err) {
+        toast("Update failed: " + err.message, true);
+        loadTasks(false);
+      }
+    },
+    openEdit(id){
+      const t = tasks.find(x => x.ID === id);
+      if (!t) return;
+      editingId = id;
+      document.getElementById("modalTitle").textContent = "Edit Task";
+      document.getElementById("deleteBtn").style.display = "inline-block";
+      fillForm(t);
+      document.getElementById("modalOverlay").hidden = false;
+    },
+  };
+
+  function fillForm(t){
+    document.getElementById("f_dept").value = t.Department || DEPTS[0].name;
+    document.getElementById("f_tag").value = t["Tag Type"] || "Deadline";
+    document.getElementById("f_task").value = t.Task || "";
+    document.getElementById("f_pic").value = t.PIC || "";
+    document.getElementById("f_overseer").value = t.Overseer || "";
+    document.getElementById("f_start").value = (t["Start Date"]||"").slice(0,10);
+    document.getElementById("f_end").value = (t["End Date"]||"").slice(0,10);
+    document.getElementById("f_status").value = t.Status || "Not Started";
+    document.getElementById("f_reminder").value = (t["Reminder Date"]||"").slice(0,10);
+    document.getElementById("f_notes").value = t.Notes || "";
+  }
+
+  function resetForm(){
+    editingId = null;
+    document.getElementById("taskForm").reset();
+    document.getElementById("f_dept").value = DEPTS[0].name;
+    document.getElementById("modalTitle").textContent = "Add Task";
+    document.getElementById("deleteBtn").style.display = "none";
+  }
+
+  function readForm(){
+    return {
+      Department: document.getElementById("f_dept").value,
+      "Tag Type": document.getElementById("f_tag").value,
+      Task: document.getElementById("f_task").value.trim(),
+      PIC: document.getElementById("f_pic").value.trim(),
+      Overseer: document.getElementById("f_overseer").value.trim(),
+      "Start Date": document.getElementById("f_start").value,
+      "End Date": document.getElementById("f_end").value,
+      Status: document.getElementById("f_status").value,
+      "Reminder Date": document.getElementById("f_reminder").value,
+      Notes: document.getElementById("f_notes").value.trim(),
+    };
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+  function escapeAttr(s){ return escapeHtml(s).replace(/`/g, "&#96;"); }
+
+  // ---------------- WIRE UP UI ----------------
+  document.querySelectorAll("nav.tabs button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("nav.tabs button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      document.getElementById("tasksView").style.display = tab === "tasks" ? "" : "none";
+      document.getElementById("timelineView").style.display = tab === "timeline" ? "" : "none";
+      if (tab === "timeline") renderTimeline();
+    });
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", () => loadTasks(true));
+  document.getElementById("addTaskBtn").addEventListener("click", () => {
+    resetForm();
+    document.getElementById("modalOverlay").hidden = false;
+  });
+  document.getElementById("cancelBtn").addEventListener("click", () => {
+    document.getElementById("modalOverlay").hidden = true;
+  });
+  document.getElementById("modalOverlay").addEventListener("click", (e) => {
+    if (e.target.id === "modalOverlay") document.getElementById("modalOverlay").hidden = true;
+  });
+
+  document.getElementById("taskForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = readForm();
+    try {
+      if (editingId) {
+        await apiPost({ action: "update", id: editingId, task: data });
+        toast("Task updated");
+      } else {
+        await apiPost({ action: "add", task: data });
+        toast("Task added");
+      }
+      document.getElementById("modalOverlay").hidden = true;
+      await loadTasks(false);
+    } catch (err) {
+      toast("Save failed: " + err.message, true);
+    }
+  });
+
+  document.getElementById("deleteBtn").addEventListener("click", async () => {
+    if (!editingId) return;
+    if (!confirm("Delete this task? This cannot be undone.")) return;
+    try {
+      await apiPost({ action: "delete", id: editingId });
+      toast("Task deleted");
+      document.getElementById("modalOverlay").hidden = true;
+      await loadTasks(false);
+    } catch (err) {
+      toast("Delete failed: " + err.message, true);
+    }
+  });
+
+  // populate department dropdown
+  const deptSelect = document.getElementById("f_dept");
+  deptSelect.innerHTML = DEPTS.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
+
+  // ---------------- INIT ----------------
+  loadTasks(true);
+  scheduleRefresh();
+})();
+</script>
+</body>
+</html>
