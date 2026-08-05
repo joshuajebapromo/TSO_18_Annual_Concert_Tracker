@@ -27,6 +27,9 @@
   .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
   .btn-danger{background:#FBE4E4;color:var(--red);}
   .sync-note{font-size:11px;color:#C7CAE0;}
+  .identity-pill{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:14px;padding:6px 12px;font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .identity-pill:hover{background:rgba(255,255,255,.2);}
+  .identity-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);}
 
   nav.tabs{display:flex;gap:4px;padding:14px 28px 0;background:var(--ivory);border-bottom:1px solid var(--border);}
   nav.tabs button{background:none;border:none;padding:10px 18px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;}
@@ -34,13 +37,19 @@
 
   main{padding:20px 28px 60px;max-width:1400px;margin:0 auto;}
 
-  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
   .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
   .kpi-card .num{font-size:24px;font-weight:800;color:var(--navy);}
   .kpi-card .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
   .kpi-card.overdue .num{color:var(--red);}
   .kpi-card.soon .num{color:var(--amber);}
   .kpi-card.done .num{color:var(--green);}
+
+  .filter-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:16px;}
+  .filter-bar label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-right:4px;}
+  .filter-bar select,.filter-bar input[type=date]{border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12.5px;font-family:inherit;}
+  .filter-group{display:flex;align-items:center;gap:4px;}
+  .filter-count{margin-left:auto;font-size:11.5px;color:var(--muted);}
 
   .dept-section{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden;}
   .dept-head{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;}
@@ -69,8 +78,11 @@
   .date-flag.overdue{color:var(--red);}
   .date-flag.soon{color:var(--amber);}
   .pic-cell{font-size:12.5px;}
+  .overseer-note{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .overseer-note b{color:var(--text);}
 
   select.status-pill{border:none;border-radius:14px;padding:5px 10px 5px 8px;font-size:12px;font-weight:700;cursor:pointer;appearance:none;-webkit-appearance:none;background-repeat:no-repeat;background-position:right 6px center;padding-right:22px;}
+  select.status-pill:disabled{cursor:not-allowed;opacity:.7;}
   .st-Not_Started{background-color:var(--st-notstarted-bg);color:var(--st-notstarted-fg);}
   .st-In_Progress{background-color:var(--st-inprogress-bg);color:var(--st-inprogress-fg);}
   .st-Under_Review{background-color:var(--st-underreview-bg);color:var(--st-underreview-fg);}
@@ -80,22 +92,26 @@
   .icon-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;color:var(--muted);}
   .icon-btn:hover{background:#F0EEE7;color:var(--text);}
 
-  /* Timeline */
+  /* Calendar */
+  .cal-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .cal-toolbar .cal-month-label{font-size:16px;font-weight:700;color:var(--navy);min-width:170px;}
+  .cal-nav-btn{background:var(--card);border:1px solid var(--border);border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:14px;color:var(--navy);}
+  .cal-nav-btn:hover{background:#F0EEE7;}
   .timeline-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
   .legend-chip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);}
   .legend-swatch{width:11px;height:11px;border-radius:3px;}
-  .timeline-outer{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--card);}
-  .tl-header-row{display:flex;position:sticky;top:0;background:var(--card);z-index:3;border-bottom:1px solid var(--border);}
-  .tl-label-spacer{position:sticky;left:0;width:280px;flex-shrink:0;background:var(--navy);z-index:4;}
-  .tl-month-track{position:relative;height:24px;}
-  .tl-month-lbl{position:absolute;top:0;height:24px;display:flex;align-items:center;font-size:11px;font-weight:700;color:#fff;background:var(--navy);padding-left:6px;border-left:1px solid rgba(255,255,255,.25);}
-  .tl-day-track{position:relative;height:20px;border-top:1px solid rgba(255,255,255,.15);}
-  .tl-day-lbl{position:absolute;top:0;height:20px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#C7CAE0;width:16px;}
-  .tl-row{display:flex;align-items:center;height:30px;border-bottom:1px solid #F0EEE7;}
-  .tl-label{position:sticky;left:0;width:280px;flex-shrink:0;background:var(--card);z-index:2;padding:0 10px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--border);}
-  .tl-bars{position:relative;height:30px;}
-  .tl-bar{position:absolute;top:6px;height:18px;border-radius:5px;font-size:9.5px;color:var(--navy);display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;font-weight:700;box-shadow:0 0 0 1px rgba(0,0,0,.05);}
-  .tl-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:2;}
+  .cal-grid{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .cal-weekday-row{display:grid;grid-template-columns:repeat(7,1fr);background:var(--navy);}
+  .cal-weekday-row div{color:#fff;font-size:11px;font-weight:700;text-align:center;padding:8px 0;}
+  .cal-week{position:relative;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--border);min-height:96px;}
+  .cal-day{border-right:1px solid var(--border);padding:4px 4px 2px;position:relative;}
+  .cal-day:last-child{border-right:none;}
+  .cal-day.other-month{background:#FAFAF6;}
+  .cal-daynum{font-size:11px;color:var(--muted);font-weight:600;}
+  .cal-day.today .cal-daynum{background:var(--gold);color:var(--navy);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;}
+  .cal-bars-overlay{position:absolute;top:22px;left:0;right:0;bottom:2px;pointer-events:none;}
+  .cal-bar{position:absolute;height:16px;border-radius:4px;font-size:9.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap;cursor:pointer;pointer-events:auto;box-shadow:0 0 0 1px rgba(0,0,0,.04);}
+  .cal-overflow{position:absolute;left:2px;font-size:9.5px;color:var(--muted);font-weight:700;cursor:pointer;pointer-events:auto;}
 
   /* Modal */
   .overlay{position:fixed;inset:0;background:rgba(27,31,59,.45);display:flex;align-items:center;justify-content:center;z-index:50;}
@@ -126,6 +142,7 @@
     <div class="sub">Taylor's Symphony Orchestra Annual Concert 2026 &nbsp;•&nbsp; Main Concert 24/10</div>
   </div>
   <div class="top-actions">
+    <button class="identity-pill" id="identityBtn"><span class="dot"></span><span id="identityLabel">Set your name</span></button>
     <span class="sync-note" id="syncNote">Loading…</span>
     <button class="btn btn-ghost" id="refreshBtn">↻ Refresh</button>
     <button class="btn btn-gold" id="addTaskBtn">+ Add Task</button>
@@ -145,12 +162,43 @@
       <div class="kpi-card soon"><div class="num" id="kpiSoon">–</div><div class="lbl">Due within 7 days</div></div>
       <div class="kpi-card overdue"><div class="num" id="kpiOverdue">–</div><div class="lbl">Overdue</div></div>
     </div>
+
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>PIC</label>
+        <select id="filterPic"><option value="">All</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="filterStatus">
+          <option value="">All</option>
+          <option>Not Started</option><option>In Progress</option><option>Under Review</option><option>Completed</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>From</label>
+        <input type="date" id="filterFrom">
+      </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input type="date" id="filterTo">
+      </div>
+      <button class="btn btn-outline" id="clearFiltersBtn">Clear</button>
+      <div class="filter-count" id="filterCount"></div>
+    </div>
+
     <div id="deptSections"><div class="loading">Loading tasks…</div></div>
   </div>
 
   <div id="timelineView" style="display:none;">
+    <div class="cal-toolbar">
+      <button class="cal-nav-btn" id="calPrev">‹</button>
+      <div class="cal-month-label" id="calMonthLabel">—</div>
+      <button class="cal-nav-btn" id="calNext">›</button>
+      <button class="btn btn-outline" id="calTodayBtn">Today</button>
+    </div>
     <div class="timeline-legend" id="timelineLegend"></div>
-    <div class="timeline-outer" id="timelineOuter"><div class="loading">Loading timeline…</div></div>
+    <div class="cal-grid" id="calGrid"><div class="loading">Loading calendar…</div></div>
   </div>
 </main>
 
@@ -254,6 +302,7 @@
   let collapsedDepts = new Set();
   let editingId = null;
   let refreshTimer = null;
+  let calCursor = new Date(); calCursor.setDate(1); // first-of-month cursor for the calendar tab
 
   // ---------------- HELPERS ----------------
   function toast(msg, isError){
@@ -265,13 +314,15 @@
 
   function todayStr(){
     const d = new Date();
-    return d.toISOString().slice(0,10);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   }
 
   function parseDateOnly(s){
     if (!s) return null;
-    // handles both "yyyy-MM-dd" and ISO datetime strings from Apps Script
-    return new Date(String(s).slice(0,10) + "T00:00:00");
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
   }
 
   function daysBetween(a, b){
@@ -284,8 +335,29 @@
     return d.toLocaleDateString("en-GB", { day:"2-digit", month:"2-digit" });
   }
 
+  function fmtDateRange(startS, endS){
+    if (startS && endS && startS === endS) return fmtDate(startS);
+    const s = parseDateOnly(startS), e = parseDateOnly(endS);
+    if (s && e && s.getTime() === e.getTime()) return fmtDate(startS);
+    return fmtDate(startS) + " – " + fmtDate(endS);
+  }
+
   function statusClass(s){
     return "st-" + String(s || "Not Started").replace(/ /g, "_");
+  }
+
+  // ---------------- IDENTITY (lightweight, client-side only) ----------------
+  function getIdentity(){ return (localStorage.getItem("tracker_identity") || "").trim(); }
+  function setIdentity(name){ localStorage.setItem("tracker_identity", name.trim()); renderIdentity(); }
+  function renderIdentity(){
+    const name = getIdentity();
+    document.getElementById("identityLabel").textContent = name ? ("Browsing as: " + name) : "Set your name";
+  }
+  function isOverseerMatch(identity, overseerField){
+    if (!identity || !overseerField) return false;
+    const id = identity.toLowerCase();
+    // Overseer field can be "Joshua", "Joshua / Victor / Yoyo / Sean", "TBC (rec. Joshua)", "Self", etc.
+    return overseerField.toLowerCase().split(/[\/,()]/).map(s => s.trim()).some(part => part && (part === id || part.includes(id)));
   }
 
   // ---------------- API ----------------
@@ -312,6 +384,7 @@
       if (showLoading) document.getElementById("deptSections").innerHTML = '<div class="loading">Loading tasks…</div>';
       tasks = await apiGet();
       document.getElementById("syncNote").textContent = "Synced " + new Date().toLocaleTimeString();
+      populatePicFilter();
       renderAll();
     } catch (err) {
       document.getElementById("syncNote").textContent = "Sync failed";
@@ -324,13 +397,43 @@
     refreshTimer = setInterval(() => loadTasks(false), REFRESH_MS);
   }
 
+  // ---------------- FILTERS ----------------
+  function populatePicFilter(){
+    const sel = document.getElementById("filterPic");
+    const current = sel.value;
+    const names = new Set();
+    tasks.forEach(t => String(t.PIC || "").split(",").map(s => s.trim()).forEach(n => { if (n) names.add(n); }));
+    const sorted = Array.from(names).sort((a,b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">All</option>' + sorted.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    if (sorted.includes(current)) sel.value = current;
+  }
+
+  function getFilteredTasks(){
+    const pic = document.getElementById("filterPic").value;
+    const status = document.getElementById("filterStatus").value;
+    const from = document.getElementById("filterFrom").value;
+    const to = document.getElementById("filterTo").value;
+
+    return tasks.filter(t => {
+      if (pic && !String(t.PIC || "").split(",").map(s => s.trim()).includes(pic)) return false;
+      if (status && t.Status !== status) return false;
+      if (from || to) {
+        const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
+        if (!s || !e) return false;
+        if (from && e < parseDateOnly(from)) return false;
+        if (to && s > parseDateOnly(to)) return false;
+      }
+      return true;
+    });
+  }
+
   // ---------------- RENDER: TASKS TAB ----------------
-  function renderKPIs(){
+  function renderKPIs(list){
     const today = parseDateOnly(todayStr());
-    const total = tasks.length;
-    const done = tasks.filter(t => t.Status === "Completed").length;
-    const overdue = tasks.filter(t => t.Status !== "Completed" && parseDateOnly(t["End Date"]) < today).length;
-    const soon = tasks.filter(t => {
+    const total = list.length;
+    const done = list.filter(t => t.Status === "Completed").length;
+    const overdue = list.filter(t => t.Status !== "Completed" && parseDateOnly(t["End Date"]) < today).length;
+    const soon = list.filter(t => {
       if (t.Status === "Completed") return false;
       const end = parseDateOnly(t["End Date"]);
       if (!end) return false;
@@ -343,15 +446,19 @@
     document.getElementById("kpiOverdue").textContent = overdue;
   }
 
-  function renderDeptSections(){
+  function renderDeptSections(list){
     const container = document.getElementById("deptSections");
-    if (tasks.length === 0) {
-      container.innerHTML = '<div class="empty-state">No tasks yet. Click "+ Add Task" to create the first one.</div>';
+    document.getElementById("filterCount").textContent = list.length + " of " + tasks.length + " tasks shown";
+
+    if (list.length === 0) {
+      container.innerHTML = tasks.length === 0
+        ? '<div class="empty-state">No tasks yet. Click "+ Add Task" to create the first one.</div>'
+        : '<div class="empty-state">No tasks match the current filters.</div>';
       return;
     }
     const today = parseDateOnly(todayStr());
     const grouped = {};
-    tasks.forEach(t => {
+    list.forEach(t => {
       const dept = t.Department || "Uncategorized";
       (grouped[dept] = grouped[dept] || []).push(t);
     });
@@ -359,11 +466,11 @@
 
     let html = "";
     order.forEach(dept => {
-      const list = grouped[dept];
-      if (!list) return;
-      list.sort((a,b) => (a.PIC||"").localeCompare(b.PIC||"") || String(a["Start Date"]||"").localeCompare(String(b["Start Date"]||"")));
-      const doneCount = list.filter(t => t.Status === "Completed").length;
-      const pct = Math.round((doneCount / list.length) * 100);
+      const deptList = grouped[dept];
+      if (!deptList) return;
+      deptList.sort((a,b) => (a.PIC||"").localeCompare(b.PIC||"") || String(a["Start Date"]||"").localeCompare(String(b["Start Date"]||"")));
+      const doneCount = deptList.filter(t => t.Status === "Completed").length;
+      const pct = Math.round((doneCount / deptList.length) * 100);
       const collapsed = collapsedDepts.has(dept) ? " collapsed" : "";
       const color = deptColor(dept);
 
@@ -372,7 +479,7 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="dept-caret">▾</span>
             <span class="dept-name">${escapeHtml(dept)}</span>
-            <span class="dept-count">${list.length} task${list.length===1?"":"s"}</span>
+            <span class="dept-count">${deptList.length} task${deptList.length===1?"":"s"}</span>
           </div>
           <div class="dept-progress-wrap">
             <div class="dept-progress-bar"><div class="dept-progress-fill" style="width:${pct}%;"></div></div>
@@ -382,11 +489,11 @@
         <div class="dept-body">
           <table class="task-table">
             <thead><tr>
-              <th style="width:32%;">Task</th><th>PIC</th><th>Dates</th><th>Status</th><th></th>
+              <th style="width:30%;">Task</th><th>PIC</th><th>Dates</th><th>Status</th><th></th>
             </tr></thead>
             <tbody>`;
 
-      list.forEach(t => {
+      deptList.forEach(t => {
         const end = parseDateOnly(t["End Date"]);
         const overdue = t.Status !== "Completed" && end && end < today;
         const diff = end ? daysBetween(today, end) : null;
@@ -396,17 +503,27 @@
         if (overdue) flag = `<span class="date-flag overdue">OVERDUE</span>`;
         else if (soon) flag = `<span class="date-flag soon">DUE SOON</span>`;
 
+        const identity = getIdentity();
+        const isUnderReview = t.Status === "Under Review";
+        const canComplete = !isUnderReview || isOverseerMatch(identity, t.Overseer || "");
+        const overseerNote = isUnderReview
+          ? `<div class="overseer-note">Overseer: <b>${escapeHtml(t.Overseer || "—")}</b></div>`
+          : "";
+
         html += `<tr class="${rowClass}">
           <td class="task-cell">
             <div class="task-name">${escapeHtml(t.Task || "")}</div>
             <div class="task-tag">${escapeHtml(t["Tag Type"] || "")}</div>
           </td>
-          <td class="pic-cell">${escapeHtml(t.PIC || "")}</td>
-          <td class="date-range">${fmtDate(t["Start Date"])} – ${fmtDate(t["End Date"])}${flag}</td>
+          <td class="pic-cell">${escapeHtml(t.PIC || "")}${overseerNote}</td>
+          <td class="date-range">${fmtDateRange(t["Start Date"], t["End Date"])}${flag}</td>
           <td>
             <select class="status-pill ${statusClass(t.Status)}" onchange="TRACKER.quickStatus('${escapeAttr(t.ID)}', this.value, this)">
-              ${["Not Started","In Progress","Under Review","Completed"].map(s =>
-                `<option value="${s}" ${t.Status===s?"selected":""}>${s}</option>`).join("")}
+              ${["Not Started","In Progress","Under Review","Completed"].map(s => {
+                const disabled = (s === "Completed" && isUnderReview && !canComplete) ? "disabled" : "";
+                const title = disabled ? `title="Only ${escapeAttr(t.Overseer||'the overseer')} can mark this Completed"` : "";
+                return `<option value="${s}" ${t.Status===s?"selected":""} ${disabled} ${title}>${s}</option>`;
+              }).join("")}
             </select>
           </td>
           <td>
@@ -424,117 +541,116 @@
   }
 
   function renderAll(){
-    renderKPIs();
-    renderDeptSections();
-    renderTimeline();
+    const filtered = getFilteredTasks();
+    renderKPIs(filtered);
+    renderDeptSections(filtered);
+    renderCalendar();
   }
 
-  // ---------------- RENDER: TIMELINE TAB ----------------
-  function renderTimeline(){
-    const outer = document.getElementById("timelineOuter");
+  // ---------------- RENDER: MASTER TIMELINE (CALENDAR) ----------------
+  function renderCalendar(){
+    const grid = document.getElementById("calGrid");
     const legend = document.getElementById("timelineLegend");
     legend.innerHTML = DEPTS.map(d =>
       `<span class="legend-chip"><span class="legend-swatch" style="background:${d.color};"></span>${escapeHtml(d.name)}</span>`
     ).join("");
 
-    if (tasks.length === 0) {
-      outer.innerHTML = '<div class="empty-state">No tasks yet.</div>';
+    const list = getFilteredTasks();
+    document.getElementById("calMonthLabel").textContent = calCursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+    if (list.length === 0) {
+      grid.innerHTML = '<div class="empty-state">No tasks to show on the calendar.</div>';
       return;
     }
 
-    const dayWidth = 16;
-    let minDate = null, maxDate = null;
-    tasks.forEach(t => {
-      const s = parseDateOnly(t["Start Date"]);
-      const e = parseDateOnly(t["End Date"]);
-      if (s && (!minDate || s < minDate)) minDate = s;
-      if (e && (!maxDate || e > maxDate)) maxDate = e;
-    });
-    if (!minDate || !maxDate) { outer.innerHTML = '<div class="empty-state">No dated tasks yet.</div>'; return; }
-    const totalDays = daysBetween(minDate, maxDate) + 1;
-    const totalWidth = totalDays * dayWidth;
+    const year = calCursor.getFullYear(), month = calCursor.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const startWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
+    const gridStart = new Date(year, month, 1 - startWeekday);
+    const daysInGrid = 42; // 6 weeks, always enough to cover any month
+    const todayD = parseDateOnly(todayStr());
 
-    // month header segments
-    let monthSegs = [];
-    let cursor = new Date(minDate);
-    while (cursor <= maxDate) {
-      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-      const segStart = monthStart < minDate ? minDate : monthStart;
-      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
-      const segEnd = monthEnd > maxDate ? maxDate : monthEnd;
-      monthSegs.push({
-        label: cursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
-        left: daysBetween(minDate, segStart) * dayWidth,
-        width: (daysBetween(segStart, segEnd) + 1) * dayWidth,
+    let html = `<div class="cal-weekday-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div>${d}</div>`).join("")}</div>`;
+
+    for (let w = 0; w < 6; w++) {
+      const weekStart = new Date(gridStart); weekStart.setDate(weekStart.getDate() + w*7);
+      const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+
+      // tasks intersecting this week
+      const weekTasks = list.filter(t => {
+        const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
+        return s && e && s <= weekEnd && e >= weekStart;
+      }).sort((a,b) => (parseDateOnly(a["Start Date"]) - parseDateOnly(b["Start Date"])) || (parseDateOnly(b["End Date"]) - parseDateOnly(b["Start Date"])) - (parseDateOnly(a["End Date"]) - parseDateOnly(a["Start Date"])));
+
+      // greedy lane assignment
+      const MAX_LANES = 3;
+      const lanes = []; // each lane: last occupied end-col index
+      const placed = [];
+      const overflowPerDay = new Array(7).fill(0);
+
+      weekTasks.forEach(t => {
+        const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
+        const colStart = Math.max(0, daysBetween(weekStart, s));
+        const colEnd = Math.min(6, daysBetween(weekStart, e));
+        let lane = -1;
+        for (let l = 0; l < lanes.length; l++) {
+          if (lanes[l] < colStart) { lane = l; break; }
+        }
+        if (lane === -1 && lanes.length < MAX_LANES) { lane = lanes.length; lanes.push(-1); }
+        if (lane === -1) {
+          for (let c = colStart; c <= colEnd; c++) overflowPerDay[c]++;
+          return;
+        }
+        lanes[lane] = colEnd;
+        placed.push({ t, colStart, colEnd, lane });
       });
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    }
 
-    let dayTicks = "";
-    for (let i = 0; i < totalDays; i++) {
-      const d = new Date(minDate); d.setDate(d.getDate() + i);
-      if (d.getDate() === 1 || d.getDate() % 5 === 0) {
-        dayTicks += `<div class="tl-day-lbl" style="left:${i*dayWidth}px;">${d.getDate()}</div>`;
-      }
-    }
-
-    const todayOffset = daysBetween(minDate, parseDateOnly(todayStr()));
-    const todayLine = (todayOffset >= 0 && todayOffset <= totalDays)
-      ? `<div class="tl-today-line" style="left:${todayOffset*dayWidth}px;"></div>` : "";
-
-    let rows = "";
-    const grouped = {};
-    tasks.forEach(t => { (grouped[t.Department || "Uncategorized"] = grouped[t.Department || "Uncategorized"] || []).push(t); });
-    const order = DEPTS.map(d => d.name).concat(Object.keys(grouped).filter(d => !DEPTS.some(x => x.name === d)));
-
-    order.forEach(dept => {
-      const list = grouped[dept];
-      if (!list) return;
-      const color = deptColor(dept);
-      list.forEach(t => {
-        const s = parseDateOnly(t["Start Date"]);
-        const e = parseDateOnly(t["End Date"]);
-        if (!s || !e) return;
-        const left = daysBetween(minDate, s) * dayWidth;
-        const width = Math.max((daysBetween(s, e) + 1) * dayWidth, 6);
-        rows += `<div class="tl-row">
-          <div class="tl-label" title="${escapeAttr(dept + ' — ' + t.Task)}">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px;"></span>
-            ${escapeHtml(t.Task)}
-          </div>
-          <div class="tl-bars" style="width:${totalWidth}px;">
-            <div class="tl-bar" style="left:${left}px;width:${width}px;background:${color};" title="${escapeAttr(t.Task + ': ' + fmtDate(t['Start Date']) + ' - ' + fmtDate(t['End Date']))}">${width > 40 ? escapeHtml(t.Task) : ""}</div>
-          </div>
+      let dayCellsHtml = "";
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(weekStart); day.setDate(day.getDate() + d);
+        const inMonth = day.getMonth() === month;
+        const isToday = todayD && day.getTime() === todayD.getTime();
+        dayCellsHtml += `<div class="cal-day${inMonth?"":" other-month"}${isToday?" today":""}">
+          <span class="cal-daynum">${day.getDate()}</span>
         </div>`;
-      });
-    });
+      }
 
-    outer.innerHTML = `
-      <div class="tl-header-row">
-        <div class="tl-label-spacer"></div>
-        <div style="width:${totalWidth}px;">
-          <div class="tl-month-track">${monthSegs.map(m => `<div class="tl-month-lbl" style="left:${m.left}px;width:${m.width}px;">${m.label}</div>`).join("")}</div>
-          <div class="tl-day-track" style="width:${totalWidth}px;">${dayTicks}${todayLine}</div>
-        </div>
-      </div>
-      <div style="position:relative;">${rows}</div>
-    `;
+      let barsHtml = "";
+      placed.forEach(p => {
+        const left = (p.colStart / 7) * 100;
+        const width = ((p.colEnd - p.colStart + 1) / 7) * 100;
+        const color = deptColor(p.t.Department);
+        barsHtml += `<div class="cal-bar" style="left:${left}%;width:calc(${width}% - 3px);top:${p.lane*18}px;background:${color};" onclick="TRACKER.openEdit('${escapeAttr(p.t.ID)}')" title="${escapeAttr(p.t.Department + ' — ' + p.t.Task + ' (' + fmtDateRange(p.t['Start Date'], p.t['End Date']) + ')')}">${escapeHtml(p.t.Task)}</div>`;
+      });
+      const maxOverflow = Math.max(0, ...overflowPerDay);
+      if (maxOverflow > 0) {
+        barsHtml += `<div class="cal-overflow" style="top:${MAX_LANES*18}px;left:2px;">+${maxOverflow} more this week</div>`;
+      }
+
+      html += `<div class="cal-week">${dayCellsHtml}<div class="cal-bars-overlay">${barsHtml}</div></div>`;
+    }
+
+    grid.innerHTML = html;
   }
 
   // ---------------- ACTIONS ----------------
   window.TRACKER = {
     toggleDept(dept){
       if (collapsedDepts.has(dept)) collapsedDepts.delete(dept); else collapsedDepts.add(dept);
-      renderDeptSections();
+      renderDeptSections(getFilteredTasks());
     },
     async quickStatus(id, newStatus, selectEl){
+      const t = tasks.find(x => x.ID === id);
+      if (t && t.Status === "Under Review" && newStatus === "Completed" && !isOverseerMatch(getIdentity(), t.Overseer || "")) {
+        toast("Only " + (t.Overseer || "the overseer") + " can mark this Completed.", true);
+        selectEl.value = t.Status;
+        return;
+      }
       selectEl.className = "status-pill " + statusClass(newStatus);
       try {
         await apiPost({ action: "update", id, task: { Status: newStatus } });
-        const t = tasks.find(x => x.ID === id);
         if (t) t.Status = newStatus;
-        renderKPIs();
-        renderDeptSections();
+        renderAll();
         toast("Status updated");
       } catch (err) {
         toast("Update failed: " + err.message, true);
@@ -603,7 +719,7 @@
       const tab = btn.dataset.tab;
       document.getElementById("tasksView").style.display = tab === "tasks" ? "" : "none";
       document.getElementById("timelineView").style.display = tab === "timeline" ? "" : "none";
-      if (tab === "timeline") renderTimeline();
+      if (tab === "timeline") renderCalendar();
     });
   });
 
@@ -617,6 +733,35 @@
   });
   document.getElementById("modalOverlay").addEventListener("click", (e) => {
     if (e.target.id === "modalOverlay") document.getElementById("modalOverlay").hidden = true;
+  });
+
+  document.getElementById("identityBtn").addEventListener("click", () => {
+    const name = prompt("What's your name? (Used to check who's allowed to mark 'Under Review' tasks as Completed.)", getIdentity());
+    if (name !== null) { setIdentity(name); renderAll(); }
+  });
+
+  ["filterPic","filterStatus","filterFrom","filterTo"].forEach(id => {
+    document.getElementById(id).addEventListener("change", renderAll);
+  });
+  document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+    document.getElementById("filterPic").value = "";
+    document.getElementById("filterStatus").value = "";
+    document.getElementById("filterFrom").value = "";
+    document.getElementById("filterTo").value = "";
+    renderAll();
+  });
+
+  document.getElementById("calPrev").addEventListener("click", () => {
+    calCursor.setMonth(calCursor.getMonth() - 1);
+    renderCalendar();
+  });
+  document.getElementById("calNext").addEventListener("click", () => {
+    calCursor.setMonth(calCursor.getMonth() + 1);
+    renderCalendar();
+  });
+  document.getElementById("calTodayBtn").addEventListener("click", () => {
+    calCursor = new Date(); calCursor.setDate(1);
+    renderCalendar();
   });
 
   document.getElementById("taskForm").addEventListener("submit", async (e) => {
@@ -655,6 +800,7 @@
   deptSelect.innerHTML = DEPTS.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
 
   // ---------------- INIT ----------------
+  renderIdentity();
   loadTasks(true);
   scheduleRefresh();
 })();
