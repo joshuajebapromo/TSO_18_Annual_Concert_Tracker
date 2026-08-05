@@ -26,6 +26,10 @@
   .btn-ghost{background:rgba(255,255,255,.12);color:#fff;}
   .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
   .btn-danger{background:#FBE4E4;color:var(--red);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;}
+  .btn:disabled{cursor:not-allowed;opacity:.7;}
+  .btn-spinner{width:13px;height:13px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:btn-spin .7s linear infinite;flex-shrink:0;}
+  @keyframes btn-spin{to{transform:rotate(360deg);}}
   .sync-note{font-size:11px;color:#C7CAE0;}
   .identity-pill{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:14px;padding:6px 12px;font-size:11.5px;cursor:pointer;display:flex;align-items:center;gap:6px;}
   .identity-pill:hover{background:rgba(255,255,255,.2);}
@@ -272,10 +276,10 @@
         <textarea id="f_notes" rows="2" placeholder="Optional notes or link"></textarea>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;">Delete Task</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;"><span class="btn-label">Delete Task</span></button>
         <div class="right">
           <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn btn-gold">Save</button>
+          <button type="submit" class="btn btn-gold" id="saveBtn"><span class="btn-label">Save</span></button>
         </div>
       </div>
     </form>
@@ -322,6 +326,25 @@
     t.textContent = msg;
     t.className = "toast show" + (isError ? " error" : "");
     setTimeout(() => t.className = "toast", 2500);
+  }
+
+  function setBtnLoading(btn, loading, loadingText){
+    const label = btn.querySelector(".btn-label");
+    if (loading) {
+      btn.dataset.originalText = label.textContent;
+      label.textContent = loadingText;
+      btn.disabled = true;
+      if (!btn.querySelector(".btn-spinner")) {
+        const spin = document.createElement("span");
+        spin.className = "btn-spinner";
+        btn.insertBefore(spin, label);
+      }
+    } else {
+      label.textContent = btn.dataset.originalText || label.textContent;
+      btn.disabled = false;
+      const spin = btn.querySelector(".btn-spinner");
+      if (spin) spin.remove();
+    }
   }
 
   function todayStr(){
@@ -790,6 +813,10 @@
   document.getElementById("taskForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = readForm();
+    const saveBtn = document.getElementById("saveBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    setBtnLoading(saveBtn, true, editingId ? "Saving…" : "Adding…");
+    cancelBtn.disabled = true;
     try {
       if (editingId) {
         await apiPost({ action: "update", id: editingId, task: data });
@@ -802,12 +829,17 @@
       await loadTasks(false);
     } catch (err) {
       toast("Save failed: " + err.message, true);
+    } finally {
+      setBtnLoading(saveBtn, false);
+      cancelBtn.disabled = false;
     }
   });
 
   document.getElementById("deleteBtn").addEventListener("click", async () => {
     if (!editingId) return;
     if (!confirm("Delete this task? This cannot be undone.")) return;
+    const delBtn = document.getElementById("deleteBtn");
+    setBtnLoading(delBtn, true, "Deleting…");
     try {
       await apiPost({ action: "delete", id: editingId });
       toast("Task deleted");
@@ -815,6 +847,8 @@
       await loadTasks(false);
     } catch (err) {
       toast("Delete failed: " + err.message, true);
+    } finally {
+      setBtnLoading(delBtn, false);
     }
   });
 
