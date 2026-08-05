@@ -132,7 +132,16 @@
   .cal-bar.single-day .cb-line1{color:var(--text);}
   .cal-bar.single-day .cb-line2{color:var(--muted);margin-left:10px;}
   .cal-dot{display:inline-block;width:6px;height:6px;min-width:6px;border-radius:50%;margin-right:4px;}
-  .cal-overflow{position:absolute;left:2px;font-size:9.5px;color:var(--muted);font-weight:700;cursor:pointer;pointer-events:auto;}
+  .cal-overflow{position:absolute;left:2px;font-size:9.5px;color:var(--muted);font-weight:700;cursor:pointer;pointer-events:auto;text-decoration:underline;text-underline-offset:2px;}
+  .cal-overflow:hover{color:var(--navy);}
+
+  /* Week task list modal */
+  .week-task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;}
+  .week-task-item:hover{background:#FAFAF6;}
+  .week-task-swatch{width:10px;height:10px;border-radius:3px;margin-top:3px;flex-shrink:0;}
+  .week-task-main{flex:1;min-width:0;}
+  .week-task-title{font-size:12.5px;font-weight:700;color:var(--text);}
+  .week-task-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 
   /* Modal */
   .overlay{position:fixed;inset:0;background:rgba(27,31,59,.45);display:flex;align-items:center;justify-content:center;z-index:50;}
@@ -167,14 +176,14 @@
   <div class="top-actions">
     <button class="identity-pill" id="identityBtn"><span class="dot"></span><span id="identityLabel">Set your name</span></button>
     <span class="sync-note" id="syncNote">Loading…</span>
-    <button class="btn btn-ghost" id="refreshBtn">↻ Refresh</button>
+    <button class="btn btn-ghost" id="refreshBtn"><span class="btn-label">↻ Refresh</span></button>
     <button class="btn btn-gold" id="addTaskBtn">+ Add Task</button>
   </div>
 </header>
 
 <nav class="tabs">
   <button class="active" data-tab="tasks">Tasks</button>
-  <button data-tab="timeline">Master Timeline</button>
+  <button data-tab="timeline">Calendar</button>
 </nav>
 
 <main>
@@ -302,6 +311,16 @@
   </div>
 </div>
 
+<div class="overlay" id="weekOverlay" hidden>
+  <div class="modal" style="width:440px;">
+    <h2 id="weekModalTitle">Tasks this week</h2>
+    <div id="weekTaskList" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="weekCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -310,7 +329,10 @@
 
   // ---------------- CONFIG ----------------
   const API_URL = "https://script.google.com/macros/s/AKfycbwk4dqSNMA870qYGLSlKYJk05hHSenjH0bRR_KXtc0M11qgVYB4haVP91m_6vzouEu1xw/exec";
-  const REFRESH_MS = 25000;
+  const REFRESH_MS = 30000; // base auto-refresh interval; actual delay gets jitter added, see scheduleRefresh()
+  const REFRESH_JITTER_MS = 8000; // spreads out simultaneous browsers' polls instead of all firing in the same instant
+  const FETCH_TIMEOUT_MS = 15000; // give up waiting on a hung request rather than spinning forever
+  const LOCAL_CACHE_KEY = "tracker_tasks_cache_v1";
 
   const DEPTS = [
     { name: "EXCO", color: "#D9D2E9" },
@@ -336,6 +358,8 @@
   let editingId = null;
   let refreshTimer = null;
   let calCursor = new Date(); calCursor.setDate(1); // first-of-month cursor for the calendar tab
+  let calWeekCache = []; // per-week { tasks, start, end } for the "+N more" popover
+  let inFlightLoad = null; // shares one in-progress GET across overlapping triggers (manual + auto refresh)
 
   // ---------------- HELPERS ----------------
   function toast(msg, isError){
@@ -412,12 +436,39 @@
     return overseerField.toLowerCase().split(/[\/,()]/).map(s => s.trim()).some(part => part && (part === id || part.includes(id)));
   }
 
+  // ---------------- LOCAL CACHE (instant paint on load, survives refresh) ----------------
+  // The single biggest perceived-speed win available here: render whatever we
+  // showed last time immediately, with zero network wait, then quietly
+  // refresh in the background. The Apps Script backend still has to do its
+  // own work (see Code.gs), but the user is never staring at a blank spinner
+  // just because they reopened the tab.
+  function readLocalCache(){
+    try {
+      const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed.tasks) ? parsed.tasks : null;
+    } catch (err) { return null; }
+  }
+  function writeLocalCache(list){
+    try { localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify({ tasks: list, savedAt: Date.now() })); } catch (err) { /* storage full/unavailable — safe to skip */ }
+  }
+
   // ---------------- API ----------------
   async function apiGet(){
-    const res = await fetch(API_URL + "?action=list");
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || "Failed to load tasks");
-    return json.tasks;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(API_URL + "?action=list", { signal: controller.signal });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Failed to load tasks");
+      return json.tasks;
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error("Request timed out — the server is taking longer than usual");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function apiPost(body){
@@ -432,29 +483,55 @@
   }
 
   async function loadTasks(showLoading){
-    try {
-      if (showLoading) document.getElementById("deptSections").innerHTML = '<div class="loading">Loading tasks…</div>';
-      const fresh = await apiGet();
-      document.getElementById("syncNote").textContent = "Synced " + new Date().toLocaleTimeString();
-      // Skip the (comparatively expensive) full re-render when nothing actually
-      // changed since the last poll — keeps background 25s refreshes cheap when
-      // several people have the page open at once.
-      const sig = JSON.stringify(fresh);
-      if (sig !== lastTasksSignature || showLoading) {
-        tasks = fresh;
-        lastTasksSignature = sig;
-        populatePicFilter();
-        renderAll();
-      }
-    } catch (err) {
-      document.getElementById("syncNote").textContent = "Sync failed";
-      toast("Couldn't load tasks: " + err.message, true);
+    // If a load is already in flight (e.g. the 30s auto-poll fires right as
+    // someone clicks Refresh), reuse that same request instead of firing a
+    // second one — halves worst-case request volume under concurrent use.
+    if (inFlightLoad) return inFlightLoad;
+    // Give immediate feedback the moment a refresh is triggered — the sync note
+    // lives in the header so it's visible on every tab, even while the Tasks
+    // list itself is hidden (e.g. when viewing the Calendar tab).
+    if (showLoading) {
+      document.getElementById("syncNote").textContent = "Refreshing…";
+      if (tasks.length === 0) document.getElementById("deptSections").innerHTML = '<div class="loading">Loading tasks…</div>';
     }
+    inFlightLoad = (async () => {
+      try {
+        const fresh = await apiGet();
+        document.getElementById("syncNote").textContent = "Synced " + new Date().toLocaleTimeString();
+        // Skip the (comparatively expensive) full re-render when nothing actually
+        // changed since the last poll — keeps background refreshes cheap when
+        // several people have the page open at once.
+        const sig = JSON.stringify(fresh);
+        if (sig !== lastTasksSignature || showLoading) {
+          tasks = fresh;
+          lastTasksSignature = sig;
+          writeLocalCache(fresh);
+          populatePicFilter();
+          populateDeptOptions();
+          populateTagTypeOptions();
+          renderAll();
+        }
+      } catch (err) {
+        document.getElementById("syncNote").textContent = "Sync failed";
+        toast("Couldn't load tasks: " + err.message, true);
+      } finally {
+        inFlightLoad = null;
+      }
+    })();
+    return inFlightLoad;
   }
 
   function scheduleRefresh(){
-    if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => loadTasks(false), REFRESH_MS);
+    if (refreshTimer) clearTimeout(refreshTimer);
+    // Jittered, self-rescheduling timeout (rather than a fixed setInterval) so
+    // many simultaneously-open tabs don't all poll the backend in the same
+    // instant — that thundering-herd pattern is what turns "several people
+    // have it open" into a pile of requests hitting Apps Script at once.
+    const delay = REFRESH_MS + Math.floor(Math.random() * REFRESH_JITTER_MS);
+    refreshTimer = setTimeout(async () => {
+      await loadTasks(false);
+      scheduleRefresh();
+    }, delay);
   }
 
   // ---------------- FILTERS ----------------
@@ -466,6 +543,32 @@
     const sorted = Array.from(names).sort((a,b) => a.localeCompare(b));
     sel.innerHTML = '<option value="">All</option>' + sorted.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
     if (sorted.includes(current)) sel.value = current;
+  }
+
+  // Department and Tag Type dropdowns are seeded from the known lists, but if
+  // the sheet ever contains a value outside those presets (e.g. someone added
+  // a new department or tag type directly in Google Sheets), that value is
+  // merged in too — so "Add Task" always shows every option actually in use.
+  function populateDeptOptions(){
+    const sel = document.getElementById("f_dept");
+    const base = DEPTS.map(d => d.name);
+    const extra = new Set();
+    tasks.forEach(t => { const v = String(t.Department || "").trim(); if (v && !base.includes(v)) extra.add(v); });
+    const all = base.concat(Array.from(extra).sort((a,b) => a.localeCompare(b)));
+    const current = sel.value;
+    sel.innerHTML = all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    if (all.includes(current)) sel.value = current;
+  }
+
+  function populateTagTypeOptions(){
+    const sel = document.getElementById("f_tag");
+    const base = ["Deadline", "Set Up On", "Send Out", "Close On", "Execution Date"];
+    const extra = new Set();
+    tasks.forEach(t => { const v = String(t["Tag Type"] || "").trim(); if (v && !base.includes(v)) extra.add(v); });
+    const all = base.concat(Array.from(extra).sort((a,b) => a.localeCompare(b)));
+    const current = sel.value;
+    sel.innerHTML = all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    if (all.includes(current)) sel.value = current;
   }
 
   function getFilteredTasks(){
@@ -644,12 +747,17 @@
     const firstOfMonth = new Date(year, month, 1);
     const startWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
     const gridStart = new Date(year, month, 1 - startWeekday);
-    const daysInGrid = 42; // 6 weeks, always enough to cover any month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // Only render as many week-rows as this month actually needs (4/5/6, never
+    // a wasted trailing week) so the last day of the month always lands in the
+    // true last week, the way a real calendar works.
+    const weeksNeeded = Math.ceil((startWeekday + daysInMonth) / 7);
     const todayD = parseDateOnly(todayStr());
+    calWeekCache = [];
 
     let html = `<div class="cal-weekday-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div>${d}</div>`).join("")}</div>`;
 
-    for (let w = 0; w < 6; w++) {
+    for (let w = 0; w < weeksNeeded; w++) {
       const weekStart = new Date(gridStart); weekStart.setDate(weekStart.getDate() + w*7);
       const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
 
@@ -658,6 +766,8 @@
         const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
         return s && e && s <= weekEnd && e >= weekStart;
       }).sort((a,b) => (parseDateOnly(a["Start Date"]) - parseDateOnly(b["Start Date"])) || (parseDateOnly(b["End Date"]) - parseDateOnly(b["Start Date"])) - (parseDateOnly(a["End Date"]) - parseDateOnly(a["Start Date"])));
+
+      calWeekCache[w] = { tasks: weekTasks, start: weekStart, end: weekEnd };
 
       // greedy lane assignment
       const LANE_HEIGHT = 32; // px per lane, tall enough for the two-line "Tag: Task / PIC" bars
@@ -712,7 +822,7 @@
       });
       const maxOverflow = Math.max(0, ...overflowPerDay);
       if (maxOverflow > 0) {
-        barsHtml += `<div class="cal-overflow" style="top:${MAX_LANES*LANE_HEIGHT}px;left:2px;">+${maxOverflow} more this week</div>`;
+        barsHtml += `<div class="cal-overflow" style="top:${MAX_LANES*LANE_HEIGHT}px;left:2px;" onclick="TRACKER.showWeekTasks(${w})">+${maxOverflow} more this week</div>`;
       }
 
       html += `<div class="cal-week">${dayCellsHtml}<div class="cal-bars-overlay">${barsHtml}</div></div>`;
@@ -754,7 +864,32 @@
       setLockedFields(true);
       document.getElementById("modalOverlay").hidden = false;
     },
+    showWeekTasks(w){
+      const entry = calWeekCache[w];
+      if (!entry) return;
+      const { tasks: weekTasks, start, end } = entry;
+      document.getElementById("weekModalTitle").textContent =
+        "Tasks — Week of " + fmtDate(isoOf(start)) + " to " + fmtDate(isoOf(end));
+      const sorted = weekTasks.slice().sort((a,b) =>
+        (parseDateOnly(a["Start Date"]) - parseDateOnly(b["Start Date"])));
+      document.getElementById("weekTaskList").innerHTML = sorted.map(t => {
+        const color = deptColor(t.Department);
+        const tag = t["Tag Type"] || "";
+        return `<div class="week-task-item" onclick="TRACKER.openEdit('${escapeAttr(t.ID)}'); document.getElementById('weekOverlay').hidden = true;">
+          <span class="week-task-swatch" style="background:${color};"></span>
+          <div class="week-task-main">
+            <div class="week-task-title">${escapeHtml(tag ? tag + ": " : "")}${escapeHtml(t.Task || "")}</div>
+            <div class="week-task-meta">${escapeHtml(t.Department || "")} · ${escapeHtml(t.PIC || "")} · ${fmtDateRange(t["Start Date"], t["End Date"])}</div>
+          </div>
+        </div>`;
+      }).join("") || '<div class="empty-state">No tasks this week.</div>';
+      document.getElementById("weekOverlay").hidden = false;
+    },
   };
+
+  function isoOf(d){
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
 
   const LOCKABLE_IDS = ["f_dept", "f_tag", "f_task", "f_overseer", "f_start", "f_end"];
   const LOCKABLE_GROUP_IDS = ["grp_dept", "grp_tag", "grp_task", "grp_overseer", "grp_start", "grp_end"];
@@ -825,7 +960,16 @@
     });
   });
 
-  document.getElementById("refreshBtn").addEventListener("click", () => loadTasks(true));
+  document.getElementById("refreshBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("refreshBtn");
+    if (btn.disabled) return; // ignore rapid double-clicks
+    setBtnLoading(btn, true, "Refreshing…");
+    try {
+      await loadTasks(true);
+    } finally {
+      setBtnLoading(btn, false);
+    }
+  });
   document.getElementById("addTaskBtn").addEventListener("click", () => {
     resetForm();
     document.getElementById("modalOverlay").hidden = false;
@@ -835,6 +979,13 @@
   });
   document.getElementById("modalOverlay").addEventListener("click", (e) => {
     if (e.target.id === "modalOverlay") document.getElementById("modalOverlay").hidden = true;
+  });
+
+  document.getElementById("weekCloseBtn").addEventListener("click", () => {
+    document.getElementById("weekOverlay").hidden = true;
+  });
+  document.getElementById("weekOverlay").addEventListener("click", (e) => {
+    if (e.target.id === "weekOverlay") document.getElementById("weekOverlay").hidden = true;
   });
 
   document.getElementById("identityBtn").addEventListener("click", () => {
@@ -900,12 +1051,29 @@
     }
   });
 
-  // populate department dropdown
-  const deptSelect = document.getElementById("f_dept");
-  deptSelect.innerHTML = DEPTS.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
+  // seed the Add Task dropdowns with the known lists before the first load
+  // completes; populateDeptOptions()/populateTagTypeOptions() re-run after
+  // every successful fetch to merge in anything sheet-only.
+  populateDeptOptions();
+  populateTagTypeOptions();
 
   // ---------------- INIT ----------------
   renderIdentity();
+
+  // Paint instantly from whatever we cached last visit (if anything) so the
+  // page never opens to a bare spinner — then loadTasks(true) below quietly
+  // reconciles with the live sheet and re-renders only if something changed.
+  const cachedTasks = readLocalCache();
+  if (cachedTasks && cachedTasks.length) {
+    tasks = cachedTasks;
+    lastTasksSignature = JSON.stringify(cachedTasks);
+    document.getElementById("syncNote").textContent = "Showing last-known data…";
+    populatePicFilter();
+    populateDeptOptions();
+    populateTagTypeOptions();
+    renderAll();
+  }
+
   loadTasks(true);
   scheduleRefresh();
 })();
