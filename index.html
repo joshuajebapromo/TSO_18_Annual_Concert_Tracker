@@ -78,15 +78,20 @@
   table.task-table th:nth-child(3), table.task-table td:nth-child(3){width:18%;}
   table.task-table th:nth-child(4), table.task-table td:nth-child(4){width:20%;}
   table.task-table th:nth-child(5), table.task-table td:nth-child(5){width:10%;}
+  table.task-table tr.overdue{background:rgba(214,69,69,.055);}
+  table.task-table tr.due-today{background:rgba(181,72,10,.07);}
+  table.task-table tr.soon{background:rgba(201,134,42,.06);}
   table.task-table tr.overdue td.task-cell{border-left:3px solid var(--red);}
+  table.task-table tr.due-today td.task-cell{border-left:3px solid #B5480A;}
   table.task-table tr.soon td.task-cell{border-left:3px solid var(--amber);}
   .task-cell{padding-left:12px;}
   .task-name{font-weight:600;}
   .task-tag{font-size:10.5px;color:var(--muted);}
   .date-range{font-size:12px;white-space:nowrap;}
-  .date-flag{font-size:10.5px;font-weight:700;margin-left:6px;}
-  .date-flag.overdue{color:var(--red);}
-  .date-flag.soon{color:var(--amber);}
+  .due-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;margin-left:6px;white-space:nowrap;vertical-align:middle;}
+  .due-badge.overdue{background:#FBE0E0;color:#B02E2E;}
+  .due-badge.today{background:#FCE0C6;color:#B5480A;}
+  .due-badge.soon{background:#FDECC8;color:#92600E;}
   .pic-cell{font-size:12.5px;}
   .overseer-note{font-size:10.5px;color:var(--muted);margin-top:2px;}
   .overseer-note b{color:var(--text);}
@@ -139,8 +144,10 @@
   .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;}
   .field-row{display:flex;gap:10px;}
   .field-row .field{flex:1;}
-  .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;}
-  .modal-actions .right{display:flex;gap:8px;}
+  .field.locked-field select:disabled,.field.locked-field input:disabled{background:#F3F2ED;color:var(--muted);cursor:not-allowed;}
+  .field.locked-field.is-locked label::after{content:" 🔒";}
+  .lock-note{font-size:11px;color:var(--muted);background:#F7F5F0;border-radius:7px;padding:8px 10px;margin:0 0 12px;}
+  .modal-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:18px;}
 
   .toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:100;opacity:0;transform:translateY(8px);transition:all .2s;}
   .toast.show{opacity:1;transform:translateY(0);}
@@ -192,6 +199,17 @@
         </select>
       </div>
       <div class="filter-group">
+        <label>Due</label>
+        <select id="filterDue">
+          <option value="">All</option>
+          <option value="overdue">Overdue</option>
+          <option value="0">Due today</option>
+          <option value="3">Due within 3 days</option>
+          <option value="5">Due within 5 days</option>
+          <option value="7">Due within 7 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label>From</label>
         <input type="date" id="filterFrom">
       </div>
@@ -223,11 +241,11 @@
     <h2 id="modalTitle">Add Task</h2>
     <form id="taskForm">
       <div class="field-row">
-        <div class="field">
+        <div class="field locked-field" id="grp_dept">
           <label>Department</label>
           <select id="f_dept" required></select>
         </div>
-        <div class="field">
+        <div class="field locked-field" id="grp_tag">
           <label>Tag Type</label>
           <select id="f_tag" required>
             <option>Deadline</option><option>Set Up On</option><option>Send Out</option>
@@ -235,7 +253,7 @@
           </select>
         </div>
       </div>
-      <div class="field">
+      <div class="field locked-field" id="grp_task">
         <label>Task</label>
         <input type="text" id="f_task" required placeholder="e.g. Book Bandcamp ADP classroom">
       </div>
@@ -244,17 +262,17 @@
           <label>PIC</label>
           <input type="text" id="f_pic" required placeholder="e.g. Bernard, Zhan Hong">
         </div>
-        <div class="field">
+        <div class="field locked-field" id="grp_overseer">
           <label>Overseer</label>
           <input type="text" id="f_overseer" placeholder="Joshua / Victor">
         </div>
       </div>
       <div class="field-row">
-        <div class="field">
+        <div class="field locked-field" id="grp_start">
           <label>Start Date</label>
           <input type="date" id="f_start" required>
         </div>
-        <div class="field">
+        <div class="field locked-field" id="grp_end">
           <label>End Date</label>
           <input type="date" id="f_end" required>
         </div>
@@ -275,12 +293,10 @@
         <label>Notes</label>
         <textarea id="f_notes" rows="2" placeholder="Optional notes or link"></textarea>
       </div>
+      <p class="lock-note" id="lockNote" style="display:none;">🔒 Department, Tag Type, Task, Overseer, and Dates reflect the master plan and can only be changed directly in the Google Sheet. You can update PIC, Status, Reminder Date, and Notes here.</p>
       <div class="modal-actions">
-        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;"><span class="btn-label">Delete Task</span></button>
-        <div class="right">
-          <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
-          <button type="submit" class="btn btn-gold" id="saveBtn"><span class="btn-label">Save</span></button>
-        </div>
+        <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-gold" id="saveBtn"><span class="btn-label">Save</span></button>
       </div>
     </form>
   </div>
@@ -315,6 +331,7 @@
 
   // ---------------- STATE ----------------
   let tasks = [];
+  let lastTasksSignature = "";
   let collapsedDepts = new Set();
   let editingId = null;
   let refreshTimer = null;
@@ -417,10 +434,18 @@
   async function loadTasks(showLoading){
     try {
       if (showLoading) document.getElementById("deptSections").innerHTML = '<div class="loading">Loading tasks…</div>';
-      tasks = await apiGet();
+      const fresh = await apiGet();
       document.getElementById("syncNote").textContent = "Synced " + new Date().toLocaleTimeString();
-      populatePicFilter();
-      renderAll();
+      // Skip the (comparatively expensive) full re-render when nothing actually
+      // changed since the last poll — keeps background 25s refreshes cheap when
+      // several people have the page open at once.
+      const sig = JSON.stringify(fresh);
+      if (sig !== lastTasksSignature || showLoading) {
+        tasks = fresh;
+        lastTasksSignature = sig;
+        populatePicFilter();
+        renderAll();
+      }
     } catch (err) {
       document.getElementById("syncNote").textContent = "Sync failed";
       toast("Couldn't load tasks: " + err.message, true);
@@ -446,12 +471,22 @@
   function getFilteredTasks(){
     const pic = document.getElementById("filterPic").value;
     const status = document.getElementById("filterStatus").value;
+    const due = document.getElementById("filterDue").value;
     const from = document.getElementById("filterFrom").value;
     const to = document.getElementById("filterTo").value;
+    const today = parseDateOnly(todayStr());
 
     return tasks.filter(t => {
       if (pic && !String(t.PIC || "").split(",").map(s => s.trim()).includes(pic)) return false;
       if (status && t.Status !== status) return false;
+      if (due) {
+        if (t.Status === "Completed") return false;
+        const end = parseDateOnly(t["End Date"]);
+        if (!end) return false;
+        const diff = daysBetween(today, end);
+        if (due === "overdue") { if (diff >= 0) return false; }
+        else { const maxDays = parseInt(due, 10); if (diff < 0 || diff > maxDays) return false; }
+      }
       if (from || to) {
         const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
         if (!s || !e) return false;
@@ -530,13 +565,20 @@
 
       deptList.forEach(t => {
         const end = parseDateOnly(t["End Date"]);
-        const overdue = t.Status !== "Completed" && end && end < today;
-        const diff = end ? daysBetween(today, end) : null;
-        const soon = t.Status !== "Completed" && diff !== null && diff >= 0 && diff <= 3;
-        const rowClass = overdue ? "overdue" : (soon ? "soon" : "");
-        let flag = "";
-        if (overdue) flag = `<span class="date-flag overdue">OVERDUE</span>`;
-        else if (soon) flag = `<span class="date-flag soon">DUE SOON</span>`;
+        const diff = end ? daysBetween(today, end) : null; // days remaining; negative = overdue
+        let rowClass = "", badge = "";
+        if (t.Status !== "Completed" && diff !== null) {
+          if (diff < 0) {
+            rowClass = "overdue";
+            badge = `<span class="due-badge overdue">⚠ ${-diff}d overdue</span>`;
+          } else if (diff === 0) {
+            rowClass = "due-today";
+            badge = `<span class="due-badge today">🔥 Due today</span>`;
+          } else if (diff <= 4) {
+            rowClass = "soon";
+            badge = `<span class="due-badge soon">⏳ Due in ${diff}d</span>`;
+          }
+        }
 
         const identity = getIdentity();
         const isUnderReview = t.Status === "Under Review";
@@ -551,7 +593,7 @@
             <div class="task-tag">${escapeHtml(t["Tag Type"] || "")}</div>
           </td>
           <td class="pic-cell">${escapeHtml(t.PIC || "")}${overseerNote}</td>
-          <td class="date-range">${fmtDateRange(t["Start Date"], t["End Date"])}${flag}</td>
+          <td class="date-range">${fmtDateRange(t["Start Date"], t["End Date"])}${badge}</td>
           <td>
             <select class="status-pill ${statusClass(t.Status)}" onchange="TRACKER.quickStatus('${escapeAttr(t.ID)}', this.value, this)">
               ${["Not Started","In Progress","Under Review","Completed"].map(s => {
@@ -708,11 +750,19 @@
       if (!t) return;
       editingId = id;
       document.getElementById("modalTitle").textContent = "Edit Task";
-      document.getElementById("deleteBtn").style.display = "inline-block";
       fillForm(t);
+      setLockedFields(true);
       document.getElementById("modalOverlay").hidden = false;
     },
   };
+
+  const LOCKABLE_IDS = ["f_dept", "f_tag", "f_task", "f_overseer", "f_start", "f_end"];
+  const LOCKABLE_GROUP_IDS = ["grp_dept", "grp_tag", "grp_task", "grp_overseer", "grp_start", "grp_end"];
+  function setLockedFields(locked){
+    LOCKABLE_IDS.forEach(id => { document.getElementById(id).disabled = locked; });
+    LOCKABLE_GROUP_IDS.forEach(id => document.getElementById(id).classList.toggle("is-locked", locked));
+    document.getElementById("lockNote").style.display = locked ? "block" : "none";
+  }
 
   function fillForm(t){
     document.getElementById("f_dept").value = t.Department || DEPTS[0].name;
@@ -732,11 +782,15 @@
     document.getElementById("taskForm").reset();
     document.getElementById("f_dept").value = DEPTS[0].name;
     document.getElementById("modalTitle").textContent = "Add Task";
-    document.getElementById("deleteBtn").style.display = "none";
+    setLockedFields(false);
   }
 
-  function readForm(){
-    return {
+  // In edit mode only PIC/Status/Reminder Date/Notes are sent — Department, Tag
+  // Type, Task, Overseer, and the dates are locked in the UI and also enforced
+  // server-side, but keeping the payload itself minimal avoids any confusion
+  // about what actually gets changed.
+  function readForm(editMode){
+    const full = {
       Department: document.getElementById("f_dept").value,
       "Tag Type": document.getElementById("f_tag").value,
       Task: document.getElementById("f_task").value.trim(),
@@ -748,6 +802,8 @@
       "Reminder Date": document.getElementById("f_reminder").value,
       Notes: document.getElementById("f_notes").value.trim(),
     };
+    if (!editMode) return full;
+    return { PIC: full.PIC, Status: full.Status, "Reminder Date": full["Reminder Date"], Notes: full.Notes };
   }
 
   function escapeHtml(s){
@@ -786,12 +842,13 @@
     if (name !== null) { setIdentity(name); renderAll(); }
   });
 
-  ["filterPic","filterStatus","filterFrom","filterTo"].forEach(id => {
+  ["filterPic","filterStatus","filterDue","filterFrom","filterTo"].forEach(id => {
     document.getElementById(id).addEventListener("change", renderAll);
   });
   document.getElementById("clearFiltersBtn").addEventListener("click", () => {
     document.getElementById("filterPic").value = "";
     document.getElementById("filterStatus").value = "";
+    document.getElementById("filterDue").value = "";
     document.getElementById("filterFrom").value = "";
     document.getElementById("filterTo").value = "";
     renderAll();
@@ -812,43 +869,34 @@
 
   document.getElementById("taskForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const data = readForm();
+    const isEdit = !!editingId;
+    const data = readForm(isEdit);
     const saveBtn = document.getElementById("saveBtn");
     const cancelBtn = document.getElementById("cancelBtn");
-    setBtnLoading(saveBtn, true, editingId ? "Saving…" : "Adding…");
+    setBtnLoading(saveBtn, true, isEdit ? "Saving…" : "Adding…");
     cancelBtn.disabled = true;
     try {
-      if (editingId) {
-        await apiPost({ action: "update", id: editingId, task: data });
+      if (isEdit) {
+        const res = await apiPost({ action: "update", id: editingId, task: data });
+        // Optimistic local update — avoids a second round-trip (a full reload)
+        // just to see the change we already know succeeded.
+        const idx = tasks.findIndex(x => x.ID === editingId);
+        if (idx !== -1) Object.assign(tasks[idx], res.task || data);
         toast("Task updated");
       } else {
-        await apiPost({ action: "add", task: data });
+        const res = await apiPost({ action: "add", task: data });
+        tasks.push(res.task || Object.assign({ ID: "temp-" + Date.now() }, data));
         toast("Task added");
       }
+      lastTasksSignature = JSON.stringify(tasks);
+      populatePicFilter();
+      renderAll();
       document.getElementById("modalOverlay").hidden = true;
-      await loadTasks(false);
     } catch (err) {
       toast("Save failed: " + err.message, true);
     } finally {
       setBtnLoading(saveBtn, false);
       cancelBtn.disabled = false;
-    }
-  });
-
-  document.getElementById("deleteBtn").addEventListener("click", async () => {
-    if (!editingId) return;
-    if (!confirm("Delete this task? This cannot be undone.")) return;
-    const delBtn = document.getElementById("deleteBtn");
-    setBtnLoading(delBtn, true, "Deleting…");
-    try {
-      await apiPost({ action: "delete", id: editingId });
-      toast("Task deleted");
-      document.getElementById("modalOverlay").hidden = true;
-      await loadTasks(false);
-    } catch (err) {
-      toast("Delete failed: " + err.message, true);
-    } finally {
-      setBtnLoading(delBtn, false);
     }
   });
 
