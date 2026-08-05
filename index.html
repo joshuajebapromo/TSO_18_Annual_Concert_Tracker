@@ -64,10 +64,16 @@
   .dept-body{border-top:1px solid var(--border);}
   .dept-section.collapsed .dept-body{display:none;}
 
-  table.task-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.task-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
   table.task-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border);background:#FBFAF6;}
-  table.task-table td{padding:9px 12px;border-bottom:1px solid #F0EEE7;vertical-align:middle;}
+  table.task-table td{padding:9px 12px;border-bottom:1px solid #F0EEE7;vertical-align:middle;overflow-wrap:break-word;}
   table.task-table tr:last-child td{border-bottom:none;}
+  /* Fixed, identical column widths across every department table so they all line up */
+  table.task-table th:nth-child(1), table.task-table td:nth-child(1){width:32%;}
+  table.task-table th:nth-child(2), table.task-table td:nth-child(2){width:20%;}
+  table.task-table th:nth-child(3), table.task-table td:nth-child(3){width:18%;}
+  table.task-table th:nth-child(4), table.task-table td:nth-child(4){width:20%;}
+  table.task-table th:nth-child(5), table.task-table td:nth-child(5){width:10%;}
   table.task-table tr.overdue td.task-cell{border-left:3px solid var(--red);}
   table.task-table tr.soon td.task-cell{border-left:3px solid var(--amber);}
   .task-cell{padding-left:12px;}
@@ -111,6 +117,8 @@
   .cal-day.today .cal-daynum{background:var(--gold);color:var(--navy);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;}
   .cal-bars-overlay{position:absolute;top:22px;left:0;right:0;bottom:2px;pointer-events:none;}
   .cal-bar{position:absolute;height:16px;border-radius:4px;font-size:9.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap;cursor:pointer;pointer-events:auto;box-shadow:0 0 0 1px rgba(0,0,0,.04);}
+  .cal-bar.single-day{background:transparent!important;box-shadow:none;color:var(--text);font-weight:600;padding:0 2px;}
+  .cal-dot{display:inline-block;width:6px;height:6px;min-width:6px;border-radius:50%;margin-right:4px;}
   .cal-overflow{position:absolute;left:2px;font-size:9.5px;color:var(--muted);font-weight:700;cursor:pointer;pointer-events:auto;}
 
   /* Modal */
@@ -489,7 +497,7 @@
         <div class="dept-body">
           <table class="task-table">
             <thead><tr>
-              <th style="width:30%;">Task</th><th>PIC</th><th>Dates</th><th>Status</th><th></th>
+              <th>Task</th><th>PIC</th><th>Dates</th><th>Status</th><th></th>
             </tr></thead>
             <tbody>`;
 
@@ -590,6 +598,7 @@
 
       weekTasks.forEach(t => {
         const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
+        const isSingleDay = s && e && s.getTime() === e.getTime();
         const colStart = Math.max(0, daysBetween(weekStart, s));
         const colEnd = Math.min(6, daysBetween(weekStart, e));
         let lane = -1;
@@ -602,7 +611,7 @@
           return;
         }
         lanes[lane] = colEnd;
-        placed.push({ t, colStart, colEnd, lane });
+        placed.push({ t, colStart, colEnd, lane, isSingleDay });
       });
 
       let dayCellsHtml = "";
@@ -620,7 +629,15 @@
         const left = (p.colStart / 7) * 100;
         const width = ((p.colEnd - p.colStart + 1) / 7) * 100;
         const color = deptColor(p.t.Department);
-        barsHtml += `<div class="cal-bar" style="left:${left}%;width:calc(${width}% - 3px);top:${p.lane*18}px;background:${color};" onclick="TRACKER.openEdit('${escapeAttr(p.t.ID)}')" title="${escapeAttr(p.t.Department + ' — ' + p.t.Task + ' (' + fmtDateRange(p.t['Start Date'], p.t['End Date']) + ')')}">${escapeHtml(p.t.Task)}</div>`;
+        const cls = "cal-bar" + (p.isSingleDay ? " single-day" : "");
+        const bg = p.isSingleDay ? "" : `background:${color};`;
+        const inner = p.isSingleDay
+          ? `<span class="cal-dot" style="background:${color};"></span>${escapeHtml(p.t.Task)}`
+          : escapeHtml(p.t.Task);
+        const tip = p.isSingleDay
+          ? (p.t.Department + ' — ' + p.t.Task + ' (deadline: ' + fmtDate(p.t['Start Date']) + ')')
+          : (p.t.Department + ' — ' + p.t.Task + ' (' + fmtDateRange(p.t['Start Date'], p.t['End Date']) + ')');
+        barsHtml += `<div class="${cls}" style="left:${left}%;width:calc(${width}% - 3px);top:${p.lane*18}px;${bg}" onclick="TRACKER.openEdit('${escapeAttr(p.t.ID)}')" title="${escapeAttr(tip)}">${inner}</div>`;
       });
       const maxOverflow = Math.max(0, ...overflowPerDay);
       if (maxOverflow > 0) {
