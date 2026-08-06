@@ -121,10 +121,13 @@
   .cal-weekday-row{display:grid;grid-template-columns:repeat(7,1fr);background:var(--navy);}
   .cal-weekday-row div{color:#fff;font-size:11px;font-weight:700;text-align:center;padding:8px 0;}
   .cal-week{position:relative;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--border);min-height:130px;}
-  .cal-day{border-right:1px solid var(--border);padding:4px 4px 2px;position:relative;}
+  .cal-day{border-right:1px solid var(--border);padding:4px 4px 2px;position:relative;cursor:pointer;}
   .cal-day:last-child{border-right:none;}
+  .cal-day:hover{background:#F4F2EA;}
   .cal-day.other-month{background:#FAFAF6;}
+  .cal-day.other-month:hover{background:#EFEDE4;}
   .cal-daynum{font-size:11px;color:var(--muted);font-weight:600;}
+  .cal-day-overflow{position:absolute;bottom:3px;right:5px;font-size:9px;font-weight:700;color:var(--muted);background:#EDEBE3;padding:1px 6px;border-radius:8px;pointer-events:none;}
   .cal-day.today .cal-daynum{background:var(--gold);color:var(--navy);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;}
   .cal-bars-overlay{position:absolute;top:20px;left:0;right:0;bottom:2px;pointer-events:none;}
   .cal-bar{position:absolute;height:28px;border-radius:4px;padding:2px 6px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:1px;overflow:hidden;cursor:pointer;pointer-events:auto;box-shadow:0 0 0 1px rgba(0,0,0,.04);}
@@ -134,10 +137,8 @@
   .cal-bar.single-day .cb-line1{color:var(--text);}
   .cal-bar.single-day .cb-line2{color:var(--muted);margin-left:10px;}
   .cal-dot{display:inline-block;width:6px;height:6px;min-width:6px;border-radius:50%;margin-right:4px;}
-  .cal-overflow{position:absolute;left:2px;font-size:9.5px;color:var(--muted);font-weight:700;cursor:pointer;pointer-events:auto;text-decoration:underline;text-underline-offset:2px;}
-  .cal-overflow:hover{color:var(--navy);}
 
-  /* Week task list modal */
+  /* Day task list modal (opened by clicking any calendar day) */
   .week-task-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;}
   .week-task-item:hover{background:#FAFAF6;}
   .week-task-swatch{width:10px;height:10px;border-radius:3px;margin-top:3px;flex-shrink:0;}
@@ -296,6 +297,10 @@
       <div class="cal-month-label" id="calMonthLabel">—</div>
       <button class="cal-nav-btn" id="calNext">›</button>
       <button class="btn btn-outline" id="calTodayBtn">Today</button>
+      <div class="filter-group" style="margin-left:auto;">
+        <label>Department</label>
+        <select id="calFilterDept"><option value="">All</option></select>
+      </div>
     </div>
     <div class="timeline-legend" id="timelineLegend"></div>
     <div class="cal-grid" id="calGrid"><div class="loading">Loading calendar…</div></div>
@@ -407,7 +412,8 @@
     { name: "CP", color: "#F9CB9C" },
     { name: "FM & SM", color: "#B6D7A8" },
     { name: "PA / Technical", color: "#A2C4C9" },
-    { name: "Key Events", color: "#FFD966" },
+    { name: "Key Events", color: "#c27ba0" },
+    { name: "Tutti", color: "#fff2cc" },
   ];
   const deptColor = (name) => (DEPTS.find(d => d.name === name) || {}).color || "#E5E3DC";
 
@@ -428,10 +434,10 @@
     "FM & SM": ["Azraa (FM)", "Govina (SM)"],
     "PA / Technical": ["Ryan", "Melvin"],
     "Key Events": ["All Departments"],
+    "Tutti": ["All Departments"],
   };
-  // Supervisors are drawn from EXCO leadership, plus "Self" for
-  // self-supervised tasks — this is the same list regardless of department.
-  const SUPERVISOR_OPTIONS = ["Self"].concat(DEPT_COMMITTEE["EXCO"]);
+  // Supervisor dropdown options — same list regardless of department.
+  const SUPERVISOR_OPTIONS = ["EXCO", "Joshua", "Victor", "Joshua / Victor"];
 
   // ---------------- STATE ----------------
   let tasks = [];
@@ -440,7 +446,6 @@
   let editingId = null;
   let refreshTimer = null;
   let calCursor = new Date(); calCursor.setDate(1); // first-of-month cursor for the calendar tab
-  let calWeekCache = []; // per-week { tasks, start, end } for the "+N more" popover
   let inFlightLoad = null; // shares one in-progress GET across overlapping triggers (manual + auto refresh)
 
   // ---------------- HELPERS ----------------
@@ -629,15 +634,20 @@
     if (sorted.includes(current)) sel.value = current;
   }
 
+  // Populates both the Tasks-tab filter and the Calendar-tab filter — the two
+  // are intentionally independent selections (each keeps its own current
+  // value) even though they share the same option list.
   function populateDeptFilter(){
-    const sel = document.getElementById("filterDept");
-    const current = sel.value;
     const base = DEPTS.map(d => d.name);
     const extra = new Set();
     tasks.forEach(t => { const v = String(t.Department || "").trim(); if (v && !base.includes(v)) extra.add(v); });
     const all = base.concat(Array.from(extra).sort((a,b) => a.localeCompare(b)));
-    sel.innerHTML = '<option value="">All</option>' + all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
-    if (all.includes(current)) sel.value = current;
+    ["filterDept", "calFilterDept"].forEach(id => {
+      const sel = document.getElementById(id);
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All</option>' + all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+      if (all.includes(current)) sel.value = current;
+    });
   }
 
   // Department and Tag Type dropdowns are seeded from the known lists, but if
@@ -866,7 +876,11 @@
       `<span class="legend-chip"><span class="legend-swatch" style="background:${d.color};"></span>${escapeHtml(d.name)}</span>`
     ).join("");
 
-    const list = getFilteredTasks();
+    // The Calendar tab has its own, independent department filter — it does
+    // NOT inherit whatever's selected in the Tasks tab's filter bar, so
+    // switching tabs never silently hides tasks the user didn't mean to hide.
+    const calDept = document.getElementById("calFilterDept").value;
+    const list = tasks.filter(t => !calDept || t.Department === calDept);
     document.getElementById("calMonthLabel").textContent = calCursor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
     if (list.length === 0) {
@@ -884,7 +898,6 @@
     // true last week, the way a real calendar works.
     const weeksNeeded = Math.ceil((startWeekday + daysInMonth) / 7);
     const todayD = parseDateOnly(todayStr());
-    calWeekCache = [];
 
     let html = `<div class="cal-weekday-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div>${d}</div>`).join("")}</div>`;
 
@@ -897,8 +910,6 @@
         const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
         return s && e && s <= weekEnd && e >= weekStart;
       }).sort((a,b) => (parseDateOnly(a["Start Date"]) - parseDateOnly(b["Start Date"])) || (parseDateOnly(b["End Date"]) - parseDateOnly(b["Start Date"])) - (parseDateOnly(a["End Date"]) - parseDateOnly(a["Start Date"])));
-
-      calWeekCache[w] = { tasks: weekTasks, start: weekStart, end: weekEnd };
 
       // greedy lane assignment
       const LANE_HEIGHT = 32; // px per lane, tall enough for the two-line "Tag: Task / PIC" bars
@@ -925,13 +936,19 @@
         placed.push({ t, colStart, colEnd, lane, isSingleDay });
       });
 
+      // Tapping any day zooms into a simple, focused agenda for just that
+      // date (TRACKER.showDayTasks) instead of showing the whole week at
+      // once — the small badge is just a hint that there's more than fits
+      // in the two visible lanes for that specific day.
       let dayCellsHtml = "";
       for (let d = 0; d < 7; d++) {
         const day = new Date(weekStart); day.setDate(day.getDate() + d);
         const inMonth = day.getMonth() === month;
         const isToday = todayD && day.getTime() === todayD.getTime();
-        dayCellsHtml += `<div class="cal-day${inMonth?"":" other-month"}${isToday?" today":""}">
+        const overflowBadge = overflowPerDay[d] > 0 ? `<span class="cal-day-overflow">+${overflowPerDay[d]}</span>` : "";
+        dayCellsHtml += `<div class="cal-day${inMonth?"":" other-month"}${isToday?" today":""}" onclick="TRACKER.showDayTasks('${isoOf(day)}')">
           <span class="cal-daynum">${day.getDate()}</span>
+          ${overflowBadge}
         </div>`;
       }
 
@@ -949,12 +966,8 @@
         const tip = p.isSingleDay
           ? (p.t.Department + ' — ' + line1Text + ' (deadline: ' + fmtDate(p.t['Start Date']) + ') — ' + (p.t.PIC || ''))
           : (p.t.Department + ' — ' + line1Text + ' (' + fmtDateRange(p.t['Start Date'], p.t['End Date']) + ') — ' + (p.t.PIC || ''));
-        barsHtml += `<div class="${cls}" style="left:${left}%;width:calc(${width}% - 3px);top:${p.lane*LANE_HEIGHT}px;${bg}" onclick="TRACKER.openEdit('${escapeAttr(p.t.ID)}')" title="${escapeAttr(tip)}">${inner}</div>`;
+        barsHtml += `<div class="${cls}" style="left:${left}%;width:calc(${width}% - 3px);top:${p.lane*LANE_HEIGHT}px;${bg}" onclick="event.stopPropagation(); TRACKER.openEdit('${escapeAttr(p.t.ID)}')" title="${escapeAttr(tip)}">${inner}</div>`;
       });
-      const maxOverflow = Math.max(0, ...overflowPerDay);
-      if (maxOverflow > 0) {
-        barsHtml += `<div class="cal-overflow" style="top:${MAX_LANES*LANE_HEIGHT}px;left:2px;" onclick="TRACKER.showWeekTasks(${w})">+${maxOverflow} more this week</div>`;
-      }
 
       html += `<div class="cal-week">${dayCellsHtml}<div class="cal-bars-overlay">${barsHtml}</div></div>`;
     }
@@ -995,15 +1008,22 @@
       setLockedFields(true);
       document.getElementById("modalOverlay").hidden = false;
     },
-    showWeekTasks(w){
-      const entry = calWeekCache[w];
-      if (!entry) return;
-      const { tasks: weekTasks, start, end } = entry;
+    // Zooms into a single date — a short, focused list instead of a whole
+    // week — opened by tapping any day cell (or its "+N" badge) in the
+    // calendar.
+    showDayTasks(isoDateStr){
+      const day = parseDateOnly(isoDateStr);
+      if (!day) return;
+      const calDept = document.getElementById("calFilterDept").value;
+      const dayTasks = tasks.filter(t => {
+        if (calDept && t.Department !== calDept) return false;
+        const s = parseDateOnly(t["Start Date"]), e = parseDateOnly(t["End Date"]);
+        return s && e && s <= day && e >= day;
+      }).sort((a,b) => (a.Department || "").localeCompare(b.Department || "") || (a.Task || "").localeCompare(b.Task || ""));
+
       document.getElementById("weekModalTitle").textContent =
-        "Tasks — Week of " + fmtDate(isoOf(start)) + " to " + fmtDate(isoOf(end));
-      const sorted = weekTasks.slice().sort((a,b) =>
-        (parseDateOnly(a["Start Date"]) - parseDateOnly(b["Start Date"])));
-      document.getElementById("weekTaskList").innerHTML = sorted.map(t => {
+        day.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long" });
+      document.getElementById("weekTaskList").innerHTML = dayTasks.map(t => {
         const color = deptColor(t.Department);
         const tag = t["Tag Type"] || "";
         return `<div class="week-task-item" onclick="TRACKER.openEdit('${escapeAttr(t.ID)}'); document.getElementById('weekOverlay').hidden = true;">
@@ -1013,7 +1033,7 @@
             <div class="week-task-meta">${escapeHtml(t.Department || "")} · ${escapeHtml(t.PIC || "")} · ${fmtDateRange(t["Start Date"], t["End Date"])}</div>
           </div>
         </div>`;
-      }).join("") || '<div class="empty-state">No tasks this week.</div>';
+      }).join("") || '<div class="empty-state">No tasks on this day.</div>';
       document.getElementById("weekOverlay").hidden = false;
     },
   };
@@ -1162,6 +1182,7 @@
     calCursor = new Date(); calCursor.setDate(1);
     renderCalendar();
   });
+  document.getElementById("calFilterDept").addEventListener("change", renderCalendar);
 
   document.getElementById("taskForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1204,6 +1225,7 @@
   populateTagTypeOptions();
   populatePicOptions(DEPTS[0].name, "");
   populateSupervisorOptions("");
+  populateDeptFilter();
 
   // ---------------- INIT ----------------
   renderIdentity();
