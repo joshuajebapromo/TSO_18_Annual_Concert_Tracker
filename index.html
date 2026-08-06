@@ -95,6 +95,8 @@
   .pic-cell{font-size:12.5px;}
   .overseer-note{font-size:10.5px;color:var(--muted);margin-top:2px;}
   .overseer-note b{color:var(--text);}
+  .date-actions{margin:-6px 0 12px;}
+  .date-actions .btn{padding:5px 10px;font-size:11.5px;}
 
   select.status-pill{border:none;border-radius:14px;padding:5px 10px 5px 8px;font-size:12px;font-weight:700;cursor:pointer;appearance:none;-webkit-appearance:none;background-repeat:no-repeat;background-position:right 6px center;padding-right:22px;}
   select.status-pill:disabled{cursor:not-allowed;opacity:.7;}
@@ -164,6 +166,57 @@
 
   .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
   .loading{padding:60px;text-align:center;color:var(--muted);}
+
+  /* ---------------- RESPONSIVE (phones / narrow tablets) ---------------- */
+  @media (max-width: 760px){
+    header.top{padding:14px 16px;}
+    header.top h1{font-size:16px;}
+    header.top .sub{font-size:10.5px;}
+    .top-actions{width:100%;justify-content:space-between;gap:8px;}
+    .top-actions .sync-note{display:none;} /* redundant with the identity/refresh row on a narrow screen */
+    .identity-pill{padding:6px 9px;font-size:11px;}
+    .btn{padding:8px 12px;font-size:12.5px;}
+
+    nav.tabs{padding:10px 16px 0;gap:2px;}
+    nav.tabs button{padding:9px 12px;font-size:13px;}
+
+    main{padding:14px 14px 40px;}
+
+    .kpi-row{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi-card{padding:11px 12px;}
+    .kpi-card .num{font-size:20px;}
+
+    .filter-bar{padding:10px;}
+    .filter-group{flex:1 1 45%;min-width:130px;}
+    .filter-group select,.filter-group input[type=date]{width:100%;}
+    .filter-count{margin-left:0;width:100%;order:99;}
+    #clearFiltersBtn{flex:0 0 auto;}
+
+    /* Task tables scroll horizontally instead of squeezing/breaking columns */
+    .dept-body{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table.task-table{min-width:560px;}
+    .dept-head{padding:11px 12px;flex-wrap:wrap;}
+    .dept-progress-wrap{max-width:none;width:100%;order:3;}
+
+    .modal{padding:16px 16px;width:100%;max-width:100vw;max-height:94vh;border-radius:12px 12px 0 0;}
+    .overlay{align-items:flex-end;}
+    .field-row{flex-direction:column;gap:0;}
+
+    .cal-toolbar{flex-wrap:wrap;gap:8px;}
+    .cal-toolbar .cal-month-label{min-width:0;font-size:14px;}
+    .cal-grid{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .cal-weekday-row,.cal-week{min-width:560px;}
+    .cal-week{min-height:110px;}
+    .timeline-legend{gap:6px 10px;}
+
+    .toast{left:16px;right:16px;bottom:16px;text-align:center;}
+  }
+
+  @media (max-width: 420px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    table.task-table{font-size:12px;}
+    .modal h2{font-size:15.5px;}
+  }
 </style>
 </head>
 <body>
@@ -196,6 +249,10 @@
     </div>
 
     <div class="filter-bar">
+      <div class="filter-group">
+        <label>Department</label>
+        <select id="filterDept"><option value="">All</option></select>
+      </div>
       <div class="filter-group">
         <label>PIC</label>
         <select id="filterPic"><option value="">All</option></select>
@@ -269,11 +326,11 @@
       <div class="field-row">
         <div class="field">
           <label>PIC</label>
-          <input type="text" id="f_pic" required placeholder="e.g. Bernard, Zhan Hong">
+          <select id="f_pic" required></select>
         </div>
-        <div class="field locked-field" id="grp_overseer">
-          <label>Overseer</label>
-          <input type="text" id="f_overseer" placeholder="Joshua / Victor">
+        <div class="field locked-field" id="grp_supervisor">
+          <label>Supervisor</label>
+          <select id="f_supervisor"></select>
         </div>
       </div>
       <div class="field-row">
@@ -285,6 +342,9 @@
           <label>End Date</label>
           <input type="date" id="f_end" required>
         </div>
+      </div>
+      <div class="date-actions">
+        <button type="button" class="btn btn-outline" id="sameDateBtn">Same as start date</button>
       </div>
       <div class="field-row">
         <div class="field">
@@ -302,7 +362,7 @@
         <label>Notes</label>
         <textarea id="f_notes" rows="2" placeholder="Optional notes or link"></textarea>
       </div>
-      <p class="lock-note" id="lockNote" style="display:none;">🔒 Department, Tag Type, Task, Overseer, and Dates reflect the master plan and can only be changed directly in the Google Sheet. You can update PIC, Status, Reminder Date, and Notes here.</p>
+      <p class="lock-note" id="lockNote" style="display:none;">🔒 Department, Tag Type, Task, Supervisor, and Dates reflect the master plan and can only be changed directly in the Google Sheet. You can update PIC, Status, Reminder Date, and Notes here.</p>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
         <button type="submit" class="btn btn-gold" id="saveBtn"><span class="btn-label">Save</span></button>
@@ -350,6 +410,28 @@
     { name: "Key Events", color: "#FFD966" },
   ];
   const deptColor = (name) => (DEPTS.find(d => d.name === name) || {}).color || "#E5E3DC";
+
+  // Committee roster per department, used to build the PIC dropdown in the
+  // Add/Edit form (compiled from the existing task data — tell me if any
+  // name here is wrong or missing and I'll adjust it).
+  const DEPT_COMMITTEE = {
+    "EXCO": ["Joshua", "Victor", "Yoyo", "Sean"],
+    "Score Arrangers": ["Jia Qi", "Karen"],
+    "Logistics": ["Bernard", "Zhan Hong", "Devlin"],
+    "Design": ["Iris Chieng"],
+    "Sponsorship": ["Zi Hey"],
+    "Ticketing": ["Zhen Yi"],
+    "Marketing": ["Zi Yu", "Chang Yi", "Chy Shuen", "Sin Yan"],
+    "Welfare / F&B": ["Hinata", "Anneliese"],
+    "PD": ["Beyren"],
+    "CP": ["Xin Yee"],
+    "FM & SM": ["Azraa (FM)", "Govina (SM)"],
+    "PA / Technical": ["Ryan", "Melvin"],
+    "Key Events": ["All Departments"],
+  };
+  // Supervisors are drawn from EXCO leadership, plus "Self" for
+  // self-supervised tasks — this is the same list regardless of department.
+  const SUPERVISOR_OPTIONS = ["Self"].concat(DEPT_COMMITTEE["EXCO"]);
 
   // ---------------- STATE ----------------
   let tasks = [];
@@ -429,11 +511,11 @@
     const name = getIdentity();
     document.getElementById("identityLabel").textContent = name ? ("Browsing as: " + name) : "Set your name";
   }
-  function isOverseerMatch(identity, overseerField){
-    if (!identity || !overseerField) return false;
+  function isSupervisorMatch(identity, supervisorField){
+    if (!identity || !supervisorField) return false;
     const id = identity.toLowerCase();
-    // Overseer field can be "Joshua", "Joshua / Victor / Yoyo / Sean", "TBC (rec. Joshua)", "Self", etc.
-    return overseerField.toLowerCase().split(/[\/,()]/).map(s => s.trim()).some(part => part && (part === id || part.includes(id)));
+    // Supervisor field can be "Joshua", "Joshua / Victor / Yoyo / Sean", "TBC (rec. Joshua)", "Self", etc.
+    return supervisorField.toLowerCase().split(/[\/,()]/).map(s => s.trim()).some(part => part && (part === id || part.includes(id)));
   }
 
   // ---------------- LOCAL CACHE (instant paint on load, survives refresh) ----------------
@@ -507,8 +589,10 @@
           lastTasksSignature = sig;
           writeLocalCache(fresh);
           populatePicFilter();
+          populateDeptFilter();
           populateDeptOptions();
           populateTagTypeOptions();
+          populateSupervisorOptions();
           renderAll();
         }
       } catch (err) {
@@ -545,6 +629,17 @@
     if (sorted.includes(current)) sel.value = current;
   }
 
+  function populateDeptFilter(){
+    const sel = document.getElementById("filterDept");
+    const current = sel.value;
+    const base = DEPTS.map(d => d.name);
+    const extra = new Set();
+    tasks.forEach(t => { const v = String(t.Department || "").trim(); if (v && !base.includes(v)) extra.add(v); });
+    const all = base.concat(Array.from(extra).sort((a,b) => a.localeCompare(b)));
+    sel.innerHTML = '<option value="">All</option>' + all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    if (all.includes(current)) sel.value = current;
+  }
+
   // Department and Tag Type dropdowns are seeded from the known lists, but if
   // the sheet ever contains a value outside those presets (e.g. someone added
   // a new department or tag type directly in Google Sheets), that value is
@@ -571,7 +666,42 @@
     if (all.includes(current)) sel.value = current;
   }
 
+  // PIC dropdown for the Add/Edit form is scoped to the selected department's
+  // committee roster: the first option selects everyone (comma-joined,
+  // matching how multi-assignee PIC values are already stored in the
+  // sheet), followed by each member individually.
+  function picOptionsForDept(dept){
+    const roster = DEPT_COMMITTEE[dept] || [];
+    const opts = [];
+    if (roster.length > 1) opts.push({ value: roster.join(", "), label: "All (" + roster.join(", ") + ")" });
+    roster.forEach(name => opts.push({ value: name, label: name }));
+    return opts;
+  }
+
+  function populatePicOptions(dept, presetValue){
+    const sel = document.getElementById("f_pic");
+    const current = presetValue !== undefined ? presetValue : sel.value;
+    const opts = picOptionsForDept(dept);
+    if (opts.length === 0) opts.push({ value: "", label: "— no committee list set for this department —" });
+    // If editing a task whose PIC doesn't match the roster (legacy data,
+    // custom entries), keep it selectable rather than silently losing it.
+    if (current && !opts.some(o => o.value === current)) opts.push({ value: current, label: current });
+    sel.innerHTML = opts.map(o => `<option value="${escapeAttr(o.value)}">${escapeHtml(o.label)}</option>`).join("");
+    sel.value = current || opts[0].value;
+  }
+
+  function populateSupervisorOptions(presetValue){
+    const sel = document.getElementById("f_supervisor");
+    const current = presetValue !== undefined ? presetValue : sel.value;
+    const extra = new Set();
+    tasks.forEach(t => { const v = String(t.Supervisor || "").trim(); if (v && !SUPERVISOR_OPTIONS.includes(v)) extra.add(v); });
+    const all = SUPERVISOR_OPTIONS.concat(Array.from(extra).sort((a,b) => a.localeCompare(b)));
+    sel.innerHTML = all.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    if (all.includes(current)) sel.value = current;
+  }
+
   function getFilteredTasks(){
+    const dept = document.getElementById("filterDept").value;
     const pic = document.getElementById("filterPic").value;
     const status = document.getElementById("filterStatus").value;
     const due = document.getElementById("filterDue").value;
@@ -580,6 +710,7 @@
     const today = parseDateOnly(todayStr());
 
     return tasks.filter(t => {
+      if (dept && t.Department !== dept) return false;
       if (pic && !String(t.PIC || "").split(",").map(s => s.trim()).includes(pic)) return false;
       if (status && t.Status !== status) return false;
       if (due) {
@@ -685,9 +816,9 @@
 
         const identity = getIdentity();
         const isUnderReview = t.Status === "Under Review";
-        const canComplete = !isUnderReview || isOverseerMatch(identity, t.Overseer || "");
+        const canComplete = !isUnderReview || isSupervisorMatch(identity, t.Supervisor || "");
         const overseerNote = isUnderReview
-          ? `<div class="overseer-note">Overseer: <b>${escapeHtml(t.Overseer || "—")}</b></div>`
+          ? `<div class="overseer-note">Supervisor: <b>${escapeHtml(t.Supervisor || "—")}</b></div>`
           : "";
 
         html += `<tr class="${rowClass}">
@@ -701,7 +832,7 @@
             <select class="status-pill ${statusClass(t.Status)}" onchange="TRACKER.quickStatus('${escapeAttr(t.ID)}', this.value, this)">
               ${["Not Started","In Progress","Under Review","Completed"].map(s => {
                 const disabled = (s === "Completed" && isUnderReview && !canComplete) ? "disabled" : "";
-                const title = disabled ? `title="Only ${escapeAttr(t.Overseer||'the overseer')} can mark this Completed"` : "";
+                const title = disabled ? `title="Only ${escapeAttr(t.Supervisor||'the supervisor')} can mark this Completed"` : "";
                 return `<option value="${s}" ${t.Status===s?"selected":""} ${disabled} ${title}>${s}</option>`;
               }).join("")}
             </select>
@@ -839,8 +970,8 @@
     },
     async quickStatus(id, newStatus, selectEl){
       const t = tasks.find(x => x.ID === id);
-      if (t && t.Status === "Under Review" && newStatus === "Completed" && !isOverseerMatch(getIdentity(), t.Overseer || "")) {
-        toast("Only " + (t.Overseer || "the overseer") + " can mark this Completed.", true);
+      if (t && t.Status === "Under Review" && newStatus === "Completed" && !isSupervisorMatch(getIdentity(), t.Supervisor || "")) {
+        toast("Only " + (t.Supervisor || "the supervisor") + " can mark this Completed.", true);
         selectEl.value = t.Status;
         return;
       }
@@ -891,20 +1022,22 @@
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   }
 
-  const LOCKABLE_IDS = ["f_dept", "f_tag", "f_task", "f_overseer", "f_start", "f_end"];
-  const LOCKABLE_GROUP_IDS = ["grp_dept", "grp_tag", "grp_task", "grp_overseer", "grp_start", "grp_end"];
+  const LOCKABLE_IDS = ["f_dept", "f_tag", "f_task", "f_supervisor", "f_start", "f_end"];
+  const LOCKABLE_GROUP_IDS = ["grp_dept", "grp_tag", "grp_task", "grp_supervisor", "grp_start", "grp_end"];
   function setLockedFields(locked){
     LOCKABLE_IDS.forEach(id => { document.getElementById(id).disabled = locked; });
     LOCKABLE_GROUP_IDS.forEach(id => document.getElementById(id).classList.toggle("is-locked", locked));
+    document.getElementById("sameDateBtn").disabled = locked; // dates are locked in edit mode, so this button has nothing to do there
     document.getElementById("lockNote").style.display = locked ? "block" : "none";
   }
 
   function fillForm(t){
-    document.getElementById("f_dept").value = t.Department || DEPTS[0].name;
+    const dept = t.Department || DEPTS[0].name;
+    document.getElementById("f_dept").value = dept;
     document.getElementById("f_tag").value = t["Tag Type"] || "Deadline";
     document.getElementById("f_task").value = t.Task || "";
-    document.getElementById("f_pic").value = t.PIC || "";
-    document.getElementById("f_overseer").value = t.Overseer || "";
+    populatePicOptions(dept, t.PIC || "");
+    populateSupervisorOptions(t.Supervisor || "");
     document.getElementById("f_start").value = (t["Start Date"]||"").slice(0,10);
     document.getElementById("f_end").value = (t["End Date"]||"").slice(0,10);
     document.getElementById("f_status").value = t.Status || "Not Started";
@@ -916,12 +1049,14 @@
     editingId = null;
     document.getElementById("taskForm").reset();
     document.getElementById("f_dept").value = DEPTS[0].name;
+    populatePicOptions(DEPTS[0].name, "");
+    populateSupervisorOptions("");
     document.getElementById("modalTitle").textContent = "Add Task";
     setLockedFields(false);
   }
 
   // In edit mode only PIC/Status/Reminder Date/Notes are sent — Department, Tag
-  // Type, Task, Overseer, and the dates are locked in the UI and also enforced
+  // Type, Task, Supervisor, and the dates are locked in the UI and also enforced
   // server-side, but keeping the payload itself minimal avoids any confusion
   // about what actually gets changed.
   function readForm(editMode){
@@ -930,7 +1065,7 @@
       "Tag Type": document.getElementById("f_tag").value,
       Task: document.getElementById("f_task").value.trim(),
       PIC: document.getElementById("f_pic").value.trim(),
-      Overseer: document.getElementById("f_overseer").value.trim(),
+      Supervisor: document.getElementById("f_supervisor").value.trim(),
       "Start Date": document.getElementById("f_start").value,
       "End Date": document.getElementById("f_end").value,
       Status: document.getElementById("f_status").value,
@@ -993,16 +1128,26 @@
     if (name !== null) { setIdentity(name); renderAll(); }
   });
 
-  ["filterPic","filterStatus","filterDue","filterFrom","filterTo"].forEach(id => {
+  ["filterDept","filterPic","filterStatus","filterDue","filterFrom","filterTo"].forEach(id => {
     document.getElementById(id).addEventListener("change", renderAll);
   });
   document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+    document.getElementById("filterDept").value = "";
     document.getElementById("filterPic").value = "";
     document.getElementById("filterStatus").value = "";
     document.getElementById("filterDue").value = "";
     document.getElementById("filterFrom").value = "";
     document.getElementById("filterTo").value = "";
     renderAll();
+  });
+
+  document.getElementById("f_dept").addEventListener("change", () => {
+    populatePicOptions(document.getElementById("f_dept").value, "");
+  });
+  document.getElementById("sameDateBtn").addEventListener("click", () => {
+    const start = document.getElementById("f_start").value;
+    if (!start) { toast("Pick a start date first", true); return; }
+    document.getElementById("f_end").value = start;
   });
 
   document.getElementById("calPrev").addEventListener("click", () => {
@@ -1041,6 +1186,7 @@
       }
       lastTasksSignature = JSON.stringify(tasks);
       populatePicFilter();
+      populateDeptFilter();
       renderAll();
       document.getElementById("modalOverlay").hidden = true;
     } catch (err) {
@@ -1056,6 +1202,8 @@
   // every successful fetch to merge in anything sheet-only.
   populateDeptOptions();
   populateTagTypeOptions();
+  populatePicOptions(DEPTS[0].name, "");
+  populateSupervisorOptions("");
 
   // ---------------- INIT ----------------
   renderIdentity();
@@ -1069,8 +1217,10 @@
     lastTasksSignature = JSON.stringify(cachedTasks);
     document.getElementById("syncNote").textContent = "Showing last-known data…";
     populatePicFilter();
+    populateDeptFilter();
     populateDeptOptions();
     populateTagTypeOptions();
+    populateSupervisorOptions();
     renderAll();
   }
 
