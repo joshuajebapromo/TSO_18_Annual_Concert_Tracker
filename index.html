@@ -149,7 +149,7 @@
   /* Modal */
   .overlay{position:fixed;inset:0;background:rgba(27,31,59,.45);display:flex;align-items:center;justify-content:center;z-index:50;}
   .overlay[hidden]{display:none;}
-  .modal{background:#fff;border-radius:12px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:22px 24px;}
+  .modal{background:#fff;border-radius:12px;width:520px;max-width:92vw;max-height:88vh;max-height:88dvh;overflow-y:auto;padding:22px 24px;}
   .modal h2{margin:0 0 16px;font-size:17px;color:var(--navy);}
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
@@ -199,8 +199,13 @@
     .dept-head{padding:11px 12px;flex-wrap:wrap;}
     .dept-progress-wrap{max-width:none;width:100%;order:3;}
 
-    .modal{padding:16px 16px;width:100%;max-width:100vw;max-height:94vh;border-radius:12px 12px 0 0;}
-    .overlay{align-items:flex-end;}
+    /* Modals stay centered on phones too (not a bottom sheet) — a fixed
+       bottom-anchored sheet combined with mobile browsers' address-bar-aware
+       viewport quirks was pushing the top of the Add/Edit modal (Department)
+       and the bottom of the day-view modal (Close button) off the visible
+       screen. Centered + height-capped + internally scrollable is reliable
+       on every device. */
+    .modal{padding:16px 18px;max-width:94vw;max-height:82vh;max-height:82dvh;}
     .field-row{flex-direction:column;gap:0;}
 
     .cal-toolbar{flex-wrap:wrap;gap:8px;}
